@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import pkg_resources; print\\(''langchain-mcp-adapters'' in {pkg.key for pkg in pkg_resources.working_set}\\)\")",
+      "Bash(python -c \"try: import langchain_mcp_adapters; print\\(''Installed''\\) except ImportError: print\\(''Not installed''\\)\")",
+      "Bash(python -c \"try: import langchain_mcp_adapters; print\\(''Installed''\\); except ImportError: print\\(''Not installed''\\)\")",
+      "Bash(.venv/Scripts/python -c \"import sys; sys.path.append\\(r''C:\\\\Program Files\\\\Python\\\\Python3\\\\Lib\\\\site-packages''\\); import langchain_mcp_adapters.tools; print\\(''Success''\\)\")",
+      "Bash(python -c \"import pywintypes; print\\(''pywintypes available''\\)\")"
+    ]
+  }
+}
