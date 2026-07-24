@@ -3,6 +3,7 @@
 记忆基类定义
 
 定义记忆系统的抽象接口和数据结构。
+兼容 LangChain 标准。
 """
 
 from abc import ABC, abstractmethod
@@ -10,6 +11,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
+
+# LangChain 标准消息类型
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, SystemMessage, ToolMessage
 
 
 class MessageRole(str, Enum):
@@ -26,6 +30,7 @@ class MemoryMessage:
     记忆消息
 
     表示记忆中的一个消息单元。
+    兼容 LangChain 消息格式。
     """
     role: MessageRole
     content: str
@@ -41,12 +46,41 @@ class MemoryMessage:
             "metadata": self.metadata,
         }
 
-    def to_langchain_format(self) -> dict:
+    def to_langchain_message(self) -> BaseMessage:
         """转换为 LangChain 消息格式"""
+        role_map = {
+            MessageRole.SYSTEM: SystemMessage,
+            MessageRole.USER: HumanMessage,
+            MessageRole.ASSISTANT: AIMessage,
+            MessageRole.TOOL: ToolMessage,
+        }
+        msg_class = role_map.get(self.role, HumanMessage)
+        return msg_class(content=self.content)
+
+    def to_langchain_format(self) -> dict:
+        """转换为 LangChain 消息字典格式"""
         return {
             "role": self.role.value,
             "content": self.content,
         }
+
+    @classmethod
+    def from_langchain_message(cls, message: BaseMessage) -> "MemoryMessage":
+        """从 LangChain 消息创建"""
+        role_map = {
+            "system": MessageRole.SYSTEM,
+            "human": MessageRole.USER,
+            "ai": MessageRole.ASSISTANT,
+            "tool": MessageRole.TOOL,
+        }
+        if hasattr(message, "type"):
+            role = role_map.get(message.type, MessageRole.USER)
+        else:
+            role = MessageRole.USER
+        return cls(
+            role=role,
+            content=message.content if hasattr(message, "content") else str(message),
+        )
 
     @classmethod
     def from_dict(cls, data: dict) -> "MemoryMessage":
@@ -71,6 +105,7 @@ class BaseMemory(ABC):
 
     定义记忆系统的抽象接口。
     所有具体记忆实现都需要继承此类。
+    兼容 LangChain Memory 标准接口。
     """
 
     @abstractmethod
@@ -122,12 +157,29 @@ class BaseMemory(ABC):
             tool_name: 工具名称
             structured_result: 结构化结果对象
         """
-        # 默认实现：转换为消息保存
         content = f"[{tool_name}] " + str(structured_result)
         metadata = {}
         if hasattr(structured_result, "to_dict"):
             metadata = structured_result.to_dict()
         self.add_tool_message(content=content, tool_name=tool_name, metadata=metadata)
+
+    def add_tool_message(
+        self,
+        content: str,
+        tool_name: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> None:
+        """添加工具消息的便捷方法"""
+        msg_metadata = metadata or {}
+        if tool_name:
+            msg_metadata["tool_name"] = tool_name
+        self.add_message(
+            MemoryMessage(
+                role=MessageRole.TOOL,
+                content=content,
+                metadata=msg_metadata,
+            )
+        )
 
     def __len__(self) -> int:
         """返回记忆中的消息数量"""
