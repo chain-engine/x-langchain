@@ -108,7 +108,7 @@ async def register_mcp_tools_async() -> int:
 # 导出常用工具（简化导入）
 # =============================================================================
 from .weather_tool import weather_search_tool
-from .web_tool import WebSearchTool, web_search as web_search_tool
+from .web_tool import WebSearchTool, WebSearchTool as web_search_tool
 from .exchange_rate_tool import exchange_rate_tool
 from .calendar_tool import CalendarTool
 

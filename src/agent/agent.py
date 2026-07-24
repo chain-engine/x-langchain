@@ -12,12 +12,12 @@ from typing import Any, Generator, List, Optional
 from core.logger import logger
 
 from constants import AgentMode
-from core.config import AgentConfig, Settings
-from ..actions import ActionDispatcher
-from ..llms import create_chat_model
-from ..memories import BaseMemory, ConversationHistoryMemory
-from ..planning import PlanningManager
-from ..tools import ToolRegistry
+from core.config import AgentConfig
+from actions import ActionDispatcher
+from llms import create_chat_model
+from memories import BaseMemory, ConversationHistoryMemory
+from planning import PlanningManager
+from tools import ToolRegistry
 
 
 @dataclass
@@ -65,6 +65,34 @@ class Agent:
         self._config = config or AgentConfig()
         self._iteration_count = 0
 
+        self._init_subsystems(
+            llm=llm,
+            memory=memory,
+            planning_manager=planning_manager,
+            action_dispatcher=action_dispatcher,
+            tools=tools,
+        )
+
+        logger.info(f"初始化 Agent: {self._config.model_provider}, mode={self._config.mode.value}")
+
+    def _init_subsystems(
+        self,
+        llm: Optional[Any] = None,
+        memory: Optional[BaseMemory] = None,
+        planning_manager: Optional[PlanningManager] = None,
+        action_dispatcher: Optional[ActionDispatcher] = None,
+        tools: Optional[List[Any]] = None,
+    ) -> None:
+        """
+        初始化五大子系统
+
+        Args:
+            llm: LLM 实例
+            memory: 记忆实例
+            planning_manager: 规划管理器
+            action_dispatcher: 行动调度器
+            tools: 工具列表
+        """
         # LLM 子系统
         self._llm = llm
         if self._llm is None:
@@ -91,7 +119,7 @@ class Agent:
         # Tools 子系统
         self._tools = tools
         if self._tools is None and self._config.enable_tools:
-            from ..tools import get_all_tools
+            from tools import get_all_tools
             self._tools = get_all_tools()
             logger.info(f"加载 {len(self._tools)} 个工具")
 
@@ -99,8 +127,6 @@ class Agent:
         self._action_dispatcher = action_dispatcher
         if self._action_dispatcher is None:
             self._action_dispatcher = ActionDispatcher()
-
-        logger.info(f"初始化 Agent: {self._config.model_provider}, mode={self._config.mode.value}")
 
     @property
     def config(self) -> AgentConfig:

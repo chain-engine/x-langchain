@@ -62,7 +62,7 @@ class TestAgentResponse(TestCase):
         """测试 AgentResponse 默认值"""
         from agent import AgentResponse
 
-        response = AgentResponse(content="Test")
+        response = AgentResponse(content="Test", success=True)
         assert response.success is True
         assert response.tool_results == []
         assert response.iterations == 0

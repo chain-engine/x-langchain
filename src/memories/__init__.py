@@ -14,7 +14,7 @@
 - 单一职责：每个类只负责一种记忆类型
 """
 
-from .base import BaseMemory, MemoryMessage
+from .base import BaseMemory, MemoryMessage, MessageRole
 from .history import ConversationHistoryMemory
 from .persistence import PersistentMemory, SQLiteMemoryStore
 from .manager import MemoryManager
@@ -22,6 +22,7 @@ from .manager import MemoryManager
 __all__ = [
     "BaseMemory",
     "MemoryMessage",
+    "MessageRole",
     "ConversationHistoryMemory",
     "PersistentMemory",
     "SQLiteMemoryStore",
