@@ -26,19 +26,40 @@ class PlanningManager:
         self,
         planner: Optional[BasePlanner] = None,
         executor: Optional[TaskExecutor] = None,
+        llm: Optional[Any] = None,
+        auto_llm_planning: bool = True,
     ):
         """
         初始化规划管理器
 
         Args:
-            planner: 规划器，None 则使用简单规划器
+            planner: 规划器，None 则根据 llm 参数自动选择
             executor: 任务执行器，None 则使用顺序执行器
+            llm: LLM 实例，用于智能规划
+            auto_llm_planning: 是否自动使用 LLM 规划器（当 llm 可用时）
         """
-        self._planner = planner or SimplePlanner()
+        self._llm = llm
+        self._auto_llm_planning = auto_llm_planning
+
+        # 选择规划器
+        if planner is not None:
+            self._planner = planner
+        elif llm and auto_llm_planning:
+            self._planner = LLMPlanner(llm=llm)
+        else:
+            self._planner = SimplePlanner()
+
         self._executor = executor or TaskExecutor(strategy="sequential")
         self._current_plan: list[Task] = []
         self._execution_results: list[TaskResult] = []
         logger.debug(f"初始化规划管理器，使用 {self._planner}")
+
+    def set_llm(self, llm: Any) -> None:
+        """设置 LLM 并切换到 LLM 规划器"""
+        self._llm = llm
+        if self._auto_llm_planning:
+            self._planner = LLMPlanner(llm=llm)
+            logger.info("已切换到 LLM 规划器")
 
     @property
     def planner(self) -> BasePlanner:

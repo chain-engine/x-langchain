@@ -60,3 +60,22 @@ class BaseEnum(Enum):
     @classmethod
     def get_choices(cls) -> tuple[tuple[int, str], ...]:
         return tuple((described_enum.mark, described_enum.desc) for described_enum in cls)
+
+    @classmethod
+    def from_value(cls, value: str) -> "BaseEnum":
+        """
+        根据字符串值查找枚举成员
+
+        Args:
+            value: 枚举的 mark 值（字符串）
+
+        Returns:
+            对应的枚举成员
+
+        Raises:
+            ValueError: 如果找不到匹配的值
+        """
+        for member in cls:
+            if member.mark == value:
+                return member
+        raise ValueError(f"'{value}' is not a valid {cls.__name__}")

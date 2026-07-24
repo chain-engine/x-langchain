@@ -1,0 +1,77 @@
+# =============================================================================
+# Agent 配置
+# =============================================================================
+agent:
+  model_provider: deepseek
+  model_name: null  # 若 provider 为 deepseek，此处指定模型名
+  temperature: 0.0
+  max_tokens: 4096
+  max_iterations: 10
+  timeout: 60
+  # 系统提示词，可根据需求自定义
+  system_prompt: |
+    你是一个智能助手，可以帮助用户完成各种任务。
+    当用户需要实时信息或外部数据时，优先调用工具。使用工具后，请清晰总结工具结果，
+    不要编造事实。遇到数据库问题时，请遵循 TextToSQL 流程：改写问题、查看表结构、
+    生成 SQL、校验 SQL、执行 SQL，然后用自然语言解释结果。
+  enable_memory: true
+  enable_planning: false
+  enable_tools: true
+  enable_memory_persistence: false  # 是否启用记忆持久化（跨会话）
+  session_id: null  # 会话ID（启用持久化时必填）
+  memory_store_path: null  # SQLite 数据库路径，null 则使用默认路径
+  mode: react
+  debug: false
+
+# =============================================================================
+# 数据库配置
+# =============================================================================
+database:
+  db_url: ""
+  db_host: localhost
+  db_port: 3306
+  db_user: root
+  db_password: ""
+  db_name: ""
+  text_to_sql_max_rows: 100
+  text_to_sql_timeout: 30
+  text_to_sql_model_name: null
+
+# =============================================================================
+# 工具配置
+# =============================================================================
+tools:
+  amap_api_key: ""
+  mcp_enabled: false
+
+# =============================================================================
+# 日志配置
+# =============================================================================
+logging:
+  level: INFO
+  log_dir: ./logs
+  rotation: "1 day"
+  retention: "7 days"
+  console_level: DEBUG
+
+# =============================================================================
+# 中间件配置
+# =============================================================================
+middleware:
+  max_iterations: 20
+  warn_threshold: 0.8
+
+# =============================================================================
+# LLM Provider 配置
+# =============================================================================
+llm_providers:
+  model_name: deepseek
+  deepseek_api_key: ""
+  deepseek_api_base: https://api.deepseek.com/v1
+  deepseek_model_name: deepseek-chat
+  doubao_api_key: ""
+  doubao_api_base: https://ark.cn-beijing.volces.com/api/v3
+  doubao_model_name: ""
+  aliyun_api_key: ""
+  aliyun_api_base: https://dashscope.aliyuncs.com/compatible-mode/v1
+  aliyun_model_name: qwen-plus

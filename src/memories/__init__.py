@@ -18,6 +18,13 @@ from .base import BaseMemory, MemoryMessage, MessageRole
 from .history import ConversationHistoryMemory
 from .persistence import PersistentMemory, SQLiteMemoryStore
 from .manager import MemoryManager
+from .structured_result import (
+    StructuredResult,
+    extract_structured_result,
+    SQLResultExtractor,
+    WeatherResultExtractor,
+)
+
 
 __all__ = [
     "BaseMemory",
@@ -27,4 +34,8 @@ __all__ = [
     "PersistentMemory",
     "SQLiteMemoryStore",
     "MemoryManager",
+    "StructuredResult",
+    "extract_structured_result",
+    "SQLResultExtractor",
+    "WeatherResultExtractor",
 ]

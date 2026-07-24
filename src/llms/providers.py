@@ -256,14 +256,15 @@ class AliyunProvider(BaseLLMProvider):
         )
 
     def _create_chat_model_instance(self, **kwargs) -> BaseChatModel:
-        """创建阿里云聊天模型"""
+        """创建阿里云聊天模型 (使用 dashscope SDK)"""
         logger.debug(f"创建阿里云聊天模型: {self.config.model_name}")
 
-        from langchain_community.chat_models import ChatTongyi
+        # 使用 langchain-dashscope 包中的 ChatDashScope
+        from langchain_dashscope import ChatDashScope
 
-        return ChatTongyi(
+        return ChatDashScope(
             model=self.config.model_name,
-            dashscope_api_key=self.config.api_key,
+            api_key=self.config.api_key,
             temperature=kwargs.get("temperature", self.config.temperature),
             max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
             streaming=kwargs.get("streaming", True),

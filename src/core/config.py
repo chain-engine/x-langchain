@@ -57,8 +57,12 @@ class AgentConfig:
     enable_memory: bool = True
     enable_planning: bool = False
     enable_tools: bool = True
-    mode: AgentMode = AgentMode.REACT
+    mode: AgentMode | str = AgentMode.REACT
     debug: bool = False
+    # 持久化配置
+    enable_memory_persistence: bool = False  # 是否启用记忆持久化
+    session_id: str | None = None  # 会话 ID（启用持久化时必填）
+    memory_store_path: str | None = None  # SQLite 数据库路径
 
 
 # =============================================================================
@@ -255,6 +259,10 @@ class Settings:
             "AGENT_MAX_ITERATIONS": ("agent", "max_iterations", int),
             "AGENT_TIMEOUT": ("agent", "timeout", int),
             "AGENT_DEBUG": ("agent", "debug", lambda v: v.lower() == "true"),
+            "AGENT_ENABLE_PLANNING": ("agent", "enable_planning", lambda v: v.lower() == "true"),
+            "AGENT_ENABLE_MEMORY_PERSISTENCE": ("agent", "enable_memory_persistence", lambda v: v.lower() == "true"),
+            "AGENT_SESSION_ID": ("agent", "session_id", str),
+            "AGENT_MEMORY_STORE_PATH": ("agent", "memory_store_path", str),
             # Database
             "DB_URL": ("database", "db_url", str),
             "DB_HOST": ("database", "db_host", str),
@@ -298,7 +306,16 @@ class Settings:
     def _parse_config(self) -> None:
         """解析配置到具体配置对象"""
         agent_config_dict = self._config["agent"].copy()
-        agent_config_dict["mode"] = AgentMode(agent_config_dict["mode"])
+        agent_config_dict["mode"] = AgentMode.from_value(agent_config_dict["mode"])
+        # 自动填充 model_name（当未指定时）
+        if not agent_config_dict.get("model_name"):
+            provider = agent_config_dict.get("model_provider", "").lower()
+            if provider == "deepseek":
+                agent_config_dict["model_name"] = self._config["llm_providers"]["deepseek_model_name"]
+            elif provider == "doubao":
+                agent_config_dict["model_name"] = self._config["llm_providers"]["doubao_model_name"]
+            elif provider in {"tongyi", "aliyun"}:
+                agent_config_dict["model_name"] = self._config["llm_providers"]["aliyun_model_name"]
         self.agent = AgentConfig(**agent_config_dict)
         self.database = DatabaseConfig(**self._config["database"])
         self.tools = ToolsConfig(**self._config["tools"])

@@ -138,15 +138,20 @@ class ConversationHistoryMemory(BaseMemory):
         """快捷方法：添加助手消息"""
         self.add_message(MemoryMessage(role=MessageRole.ASSISTANT, content=content))
 
-    def add_tool_message(self, content: str, tool_name: Optional[str] = None) -> None:
+    def add_tool_message(
+        self,
+        content: str,
+        tool_name: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> None:
         """快捷方法：添加工具消息"""
-        metadata = {}
+        msg_metadata = metadata or {}
         if tool_name:
-            metadata["tool_name"] = tool_name
+            msg_metadata["tool_name"] = tool_name
         self.add_message(
             MemoryMessage(
                 role=MessageRole.TOOL,
                 content=content,
-                metadata=metadata,
+                metadata=msg_metadata,
             )
         )

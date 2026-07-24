@@ -2,15 +2,14 @@
 """
 项目主入口
 
-基于新架构的交互式对话入口。
-整合 LLM、Memory、Planning、Action、Tools 五大核心子系统。
+基于 LangChain 的交互式对话入口。
 """
 
 import sys
 import warnings
 
 from .core import settings, logger
-from .agent import Agent, AgentConfig
+from .agents import LCAgent
 
 
 warnings.filterwarnings(
@@ -20,12 +19,12 @@ warnings.filterwarnings(
 )
 
 
-def interactive_chat(agent: Agent) -> None:
+def interactive_chat(agent: LCAgent) -> None:
     """
     交互式对话模式（支持多轮对话）
 
     Args:
-        agent: Agent 实例
+        agent: LCAgent 实例
     """
     print("\n" + "=" * 50)
     print("欢迎使用智能助手！")
@@ -71,36 +70,11 @@ def interactive_chat(agent: Agent) -> None:
 def main() -> None:
     """主函数"""
     try:
-        # 从配置中获取模型信息
-        model_name = settings.MODEL_NAME
-
-        logger.info(f"正在验证模型配置: {model_name}")
-        if not settings.validate_model_config(model_name):
-            logger.error(f"{model_name} 模型的配置不完整，请检查 .env 文件或 config.yaml 中的配置")
-            sys.exit(1)
-
         logger.info(f"配置信息: DEBUG={settings.DEBUG}")
-        logger.info("正在创建 Agent...")
+        logger.info("正在创建 LangChain Agent...")
 
-        # 从配置创建 AgentConfig
-        config = AgentConfig(
-            model_provider=model_name,
-            model_name=settings.llm_providers.deepseek_model_name if model_name == "deepseek" else None,
-            system_prompt=settings.agent.system_prompt or """你是一个智能助手，可以帮助用户完成各种任务。
-
-当用户需要实时信息或外部数据时，优先调用工具。使用工具后，请清晰总结工具结果，
-不要编造事实。遇到数据库问题时，请遵循 TextToSQL 流程：改写问题、查看表结构、
-生成 SQL、校验 SQL、执行 SQL，然后用自然语言解释结果。""",
-            enable_memory=True,
-            enable_tools=True,
-            debug=settings.DEBUG,
-            max_iterations=settings.agent.max_iterations,
-            timeout=settings.agent.timeout,
-            temperature=settings.agent.temperature,
-        )
-
-        # 创建 Agent
-        agent = Agent(config=config)
+        # 创建 LangChain Agent
+        agent = LCAgent(config=settings.agent)
 
         # 启动交互式对话
         interactive_chat(agent)

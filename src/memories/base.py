@@ -114,6 +114,21 @@ class BaseMemory(ABC):
         """
         pass
 
+    def add_observation(self, tool_name: str, structured_result: Any) -> None:
+        """
+        添加观测结果（结构化）
+
+        Args:
+            tool_name: 工具名称
+            structured_result: 结构化结果对象
+        """
+        # 默认实现：转换为消息保存
+        content = f"[{tool_name}] " + str(structured_result)
+        metadata = {}
+        if hasattr(structured_result, "to_dict"):
+            metadata = structured_result.to_dict()
+        self.add_tool_message(content=content, tool_name=tool_name, metadata=metadata)
+
     def __len__(self) -> int:
         """返回记忆中的消息数量"""
         return len(self.get_messages())

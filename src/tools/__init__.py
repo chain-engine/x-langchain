@@ -110,7 +110,7 @@ async def register_mcp_tools_async() -> int:
 from .weather_tool import weather_search_tool
 from .web_tool import WebSearchTool, WebSearchTool as web_search_tool
 from .exchange_rate_tool import exchange_rate_tool
-from .calendar_tool import CalendarTool
+from .calendar_tool import search_calendar, CalendarTool
 
 
 def get_mcp_tools() -> List[Any]:
@@ -206,4 +206,5 @@ __all__ = [
     "WebSearchTool",
     "exchange_rate_tool",
     "CalendarTool",
+    "search_calendar",
 ]

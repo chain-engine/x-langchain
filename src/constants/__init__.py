@@ -18,13 +18,7 @@ from .develop import (
     AsymmetricPadding,
     EncodingType,
 )
-
-
-class AgentMode(str, Enum):
-    """Agent 运行模式"""
-    CHAIN = "chain"      # 简单链式调用
-    REACT = "react"      # ReAct 推理模式
-    PLAN = "plan"        # 规划模式
+from .agent import AgentMode
 
 
 __all__ = [
