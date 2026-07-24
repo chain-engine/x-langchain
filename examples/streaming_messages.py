@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 # 导入必要的模块
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
-from tools.weather_tool import get_weather
+from tools.weather_tool import weather_search_tool as get_weather
 from core.config import settings
 from constants import STREAM_MODE_MESSAGES
 

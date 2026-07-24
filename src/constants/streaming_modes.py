@@ -7,10 +7,13 @@
 参考文档：https://langchain-doc.cn/v1/python/langchain/streaming.html
 """
 
-from typing import Final, List
+from .base import BaseEnum
 
-STREAM_MODE_UPDATES: Final[str] = "updates"
-STREAM_MODE_CUSTOM: Final[str] = "custom"
-STREAM_MODE_MESSAGES: Final[str] = "messages"
 
-DEFAULT_STREAM_MODES: Final[List[str]] = [STREAM_MODE_UPDATES, STREAM_MODE_CUSTOM, STREAM_MODE_MESSAGES]
+class StreamMode(BaseEnum):
+    UPDATES = ("updates", "增量更新模式")
+    CUSTOM = ("custom", "自定义模式")
+    MESSAGES = ("messages", "消息模式")
+
+
+DEFAULT_STREAM_MODES: list[StreamMode] = [StreamMode.UPDATES, StreamMode.CUSTOM, StreamMode.MESSAGES]

@@ -1,7 +1,6 @@
 {
+  "comment": "LangGraph configuration - agents directory has been removed, please reconfigure if needed",
   "dependencies": ["."],
-  "graphs": {
-    "agent": "./src/agents/agent.py:agent"
-  },
+  "graphs": {},
   "env": ".env"
 }

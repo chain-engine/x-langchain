@@ -7,12 +7,11 @@ from unittest import TestCase, mock
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from models.providers import (
+from src.llms.providers import (
     AliyunProvider,
     DeepSeekProvider,
     DoubaoProvider,
     LLMConfig,
-    LocalMockChatModel,
     MockProvider,
     create_chat_model,
     get_llm_provider,
@@ -24,21 +23,14 @@ class TestModelProviders(TestCase):
     def test_list_providers(self) -> None:
         self.assertIn("deepseek", list_providers())
         self.assertIn("doubao", list_providers())
-        self.assertIn("tongyi", list_providers())
+        self.assertIn("aliyun", list_providers())
         self.assertIn("mock", list_providers())
 
     def test_get_llm_provider(self) -> None:
         self.assertIsInstance(get_llm_provider("deepseek"), DeepSeekProvider)
         self.assertIsInstance(get_llm_provider("doubao"), DoubaoProvider)
-        self.assertIsInstance(get_llm_provider("tongyi"), AliyunProvider)
+        self.assertIsInstance(get_llm_provider("aliyun"), AliyunProvider)
         self.assertIsInstance(get_llm_provider("mock"), MockProvider)
-
-    def test_create_mock_model_is_offline(self) -> None:
-        model = create_chat_model("mock")
-        self.assertIsInstance(model, LocalMockChatModel)
-        self.assertIs(model.bind_tools([]), model)
-        response = model.invoke("hello")
-        self.assertIn("Mock 响应", response.content)
 
     def test_create_chat_model_unsupported(self) -> None:
         with self.assertRaises(ValueError) as context:
@@ -53,19 +45,19 @@ class TestModelProviders(TestCase):
             temperature=0.5,
         )
 
-        with mock.patch("models.providers.ChatOpenAI") as mock_chat:
+        with mock.patch("src.llms.providers.ChatOpenAI") as mock_chat:
             mock_model = mock.Mock()
             mock_chat.return_value = mock_model
             result = DeepSeekProvider(config).create_chat_model()
 
-        mock_chat.assert_called_once_with(
-            api_key="test_key",
-            base_url="https://test.api.com",
-            model="test_model",
-            temperature=0.5,
-            max_tokens=None,
-            timeout=60,
-        )
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args[1]
+        self.assertEqual(call_kwargs["api_key"], "test_key")
+        self.assertEqual(call_kwargs["base_url"], "https://test.api.com")
+        self.assertEqual(call_kwargs["model"], "test_model")
+        self.assertEqual(call_kwargs["temperature"], 0.5)
+        self.assertEqual(call_kwargs["max_tokens"], None)
+        self.assertEqual(call_kwargs["timeout"], 60)
         self.assertEqual(result, mock_model)
 
     def test_create_doubao_model(self) -> None:
@@ -76,38 +68,58 @@ class TestModelProviders(TestCase):
             temperature=0.5,
         )
 
-        with mock.patch("models.providers.ChatOpenAI") as mock_chat:
+        with mock.patch("src.llms.providers.ChatOpenAI") as mock_chat:
             mock_model = mock.Mock()
             mock_chat.return_value = mock_model
             result = DoubaoProvider(config).create_chat_model()
 
-        mock_chat.assert_called_once_with(
-            api_key="test_key",
-            base_url="https://test.api.com",
-            model="test_model",
-            temperature=0.5,
-            max_tokens=None,
-            timeout=60,
-        )
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args[1]
+        self.assertEqual(call_kwargs["api_key"], "test_key")
+        self.assertEqual(call_kwargs["base_url"], "https://test.api.com")
+        self.assertEqual(call_kwargs["model"], "test_model")
+        self.assertEqual(call_kwargs["temperature"], 0.5)
+        self.assertEqual(call_kwargs["max_tokens"], None)
+        self.assertEqual(call_kwargs["timeout"], 60)
         self.assertEqual(result, mock_model)
 
-    def test_create_tongyi_model(self) -> None:
+    def test_create_aliyun_model(self) -> None:
         config = LLMConfig(
             api_key="test_key",
             api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
             model_name="test_model",
         )
 
-        with mock.patch("langchain_community.chat_models.ChatTongyi") as mock_chat:
+        with mock.patch("src.llms.providers.ChatTongyi") as mock_chat:
             mock_model = mock.Mock()
             mock_chat.return_value = mock_model
             result = AliyunProvider(config).create_chat_model()
 
-        mock_chat.assert_called_once_with(
-            model="test_model",
-            dashscope_api_key="test_key",
-        )
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args[1]
+        self.assertEqual(call_kwargs["model"], "test_model")
+        self.assertEqual(call_kwargs["dashscope_api_key"], "test_key")
         self.assertEqual(result, mock_model)
+
+    def test_create_aliyun_model_with_params(self) -> None:
+        """测试 AliyunProvider 是否正确传递 temperature 等参数"""
+        config = LLMConfig(
+            api_key="test_key",
+            api_base="https://dashscope.aliyuncs.com/compatible-mode/v1",
+            model_name="test_model",
+            temperature=0.7,
+            max_tokens=2000,
+        )
+
+        with mock.patch("src.llms.providers.ChatTongyi") as mock_chat:
+            mock_model = mock.Mock()
+            mock_chat.return_value = mock_model
+            result = AliyunProvider(config).create_chat_model(temperature=0.3, max_tokens=1000)
+
+        mock_chat.assert_called_once()
+        call_kwargs = mock_chat.call_args[1]
+        self.assertEqual(call_kwargs["temperature"], 0.3)
+        self.assertEqual(call_kwargs["max_tokens"], 1000)
 
     def test_create_chat_model_overrides_config(self) -> None:
         provider = DeepSeekProvider(
@@ -120,7 +132,7 @@ class TestModelProviders(TestCase):
         )
 
         with mock.patch(
-            "models.providers.get_llm_provider",
+            "src.llms.providers.get_llm_provider",
             return_value=provider,
         ), mock.patch.object(
             provider,

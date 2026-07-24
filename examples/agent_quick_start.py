@@ -27,7 +27,7 @@ from langchain.tools import tool, ToolRuntime
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_openai import ChatOpenAI
 from core.config import settings
-from tools.weather_tool import get_weather
+from tools.weather_tool import weather_search_tool as get_weather
 
 
 # 定义详细的系统提示

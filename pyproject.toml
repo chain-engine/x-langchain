@@ -1,6 +1,6 @@
 [project]
 name = "x-langchain"
-version = "0.1.0"
+version = "0.2.0"
 description = "LangChain Learning and Practice Project"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -43,7 +43,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [project.scripts]
-x-langchain = "main:main"
+x-langchain = "src.main:main"
 
 [dependency-groups]
 dev = [

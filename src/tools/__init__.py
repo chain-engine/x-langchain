@@ -27,7 +27,6 @@ from .qiuchi_mcp import (
 
 # MCP may be temporarily unavailable in some deployments.
 # When disabled, we skip registering MCP tools to avoid startup failures/timeouts.
-MCP_ENABLED: bool = os.getenv("MCP_ENABLED", "false").lower() == "true"
 
 # =============================================================================
 # 工具获取接口
@@ -55,13 +54,17 @@ def register_mcp_tools() -> int:
     Returns:
         成功注册的工具数量
     """
-    if not MCP_ENABLED:
+    from core.config import settings
+    if not settings.MCP_ENABLED:
         return 0
 
     count = 0
 
     try:
         qiuchi_tools = get_qiuchi_tools()
+        if qiuchi_tools:
+            tool_names = [getattr(t, "name", str(t)) for t in qiuchi_tools]
+            print(f"[秋池工具] 获取到 {len(qiuchi_tools)} 个工具: {tool_names}")
         for tool in qiuchi_tools:
             tool_name = getattr(tool, "name", str(tool))
             if not ToolRegistry.contains(tool_name):
@@ -79,13 +82,17 @@ async def register_mcp_tools_async() -> int:
     Returns:
         成功注册的工具数量
     """
-    if not MCP_ENABLED:
+    from core.config import settings
+    if not settings.MCP_ENABLED:
         return 0
 
     count = 0
 
     try:
         qiuchi_tools = await get_qiuchi_tools_async()
+        if qiuchi_tools:
+            tool_names = [getattr(t, "name", str(t)) for t in qiuchi_tools]
+            print(f"[秋池工具] 获取到 {len(qiuchi_tools)} 个工具: {tool_names}")
         for tool in qiuchi_tools:
             tool_name = getattr(tool, "name", str(tool))
             if not ToolRegistry.contains(tool_name):
@@ -95,6 +102,15 @@ async def register_mcp_tools_async() -> int:
         warnings.warn(f"获取秋池 MCP 工具失败: {e}")
 
     return count
+
+
+# =============================================================================
+# 导出常用工具（简化导入）
+# =============================================================================
+from .weather_tool import weather_search_tool
+from .web_tool import WebSearchTool, web_search as web_search_tool
+from .exchange_rate_tool import exchange_rate_tool
+from .calendar_tool import CalendarTool
 
 
 def get_mcp_tools() -> List[Any]:
@@ -184,4 +200,10 @@ __all__ = [
     "get_mcp_tools_async",
     "get_all_tools",
     "get_all_tools_async",
+    # 常用工具
+    "weather_search_tool",
+    "web_search_tool",
+    "WebSearchTool",
+    "exchange_rate_tool",
+    "CalendarTool",
 ]

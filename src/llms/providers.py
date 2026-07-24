@@ -10,7 +10,7 @@ LLM 提供者模块
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Optional, Type
 
 from langchain_core.language_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -35,7 +35,8 @@ class BaseLLMProvider(ABC):
     """
     LLM 提供者基类
 
-    所有 LLM 提供者都需要继承此类并实现 create_chat_model 方法。
+    所有 LLM 提供者都需要继承此类并实现抽象方法。
+    采用模板方法模式，定义算法骨架，具体实现由子类提供。
     """
 
     name: str = ""
@@ -48,8 +49,19 @@ class BaseLLMProvider(ABC):
         Args:
             config: LLM 配置（可选，默认从 settings 读取）
         """
-        self.config = config or self._get_default_config()
+        self._config = config or self._get_default_config()
         self._chat_model: Optional[BaseChatModel] = None
+
+    @property
+    def config(self) -> LLMConfig:
+        """获取配置（只读）"""
+        return self._config
+
+    @config.setter
+    def config(self, value: LLMConfig) -> None:
+        """设置配置"""
+        self._config = value
+        self._chat_model = None
 
     @abstractmethod
     def _get_default_config(self) -> LLMConfig:
@@ -59,12 +71,11 @@ class BaseLLMProvider(ABC):
         Returns:
             LLMConfig 配置对象
         """
-        pass
 
     @abstractmethod
-    def create_chat_model(self, **kwargs) -> BaseChatModel:
+    def _create_chat_model_instance(self, **kwargs) -> BaseChatModel:
         """
-        创建聊天模型实例
+        创建聊天模型实例（子类实现）
 
         Args:
             **kwargs: 额外的模型参数
@@ -72,7 +83,19 @@ class BaseLLMProvider(ABC):
         Returns:
             BaseChatModel 实例
         """
-        pass
+
+    def create_chat_model(self, **kwargs) -> BaseChatModel:
+        """
+        创建聊天模型实例（模板方法）
+
+        Args:
+            **kwargs: 额外的模型参数
+
+        Returns:
+            BaseChatModel 实例
+        """
+        logger.info(f"创建聊天模型: {self.name} - {self.config.model_name}")
+        return self._create_chat_model_instance(**kwargs)
 
     @property
     def chat_model(self) -> BaseChatModel:
@@ -159,9 +182,9 @@ class DeepSeekProvider(BaseLLMProvider):
             temperature=settings.TEMPERATURE,
         )
 
-    def create_chat_model(self, **kwargs) -> BaseChatModel:
+    def _create_chat_model_instance(self, **kwargs) -> BaseChatModel:
         """创建 DeepSeek 聊天模型"""
-        logger.info(f"创建 DeepSeek 聊天模型: {self.config.model_name}")
+        logger.debug(f"创建 DeepSeek 聊天模型: {self.config.model_name}")
 
         return ChatOpenAI(
             api_key=self.config.api_key,
@@ -195,9 +218,9 @@ class DoubaoProvider(BaseLLMProvider):
             temperature=settings.TEMPERATURE,
         )
 
-    def create_chat_model(self, **kwargs) -> BaseChatModel:
+    def _create_chat_model_instance(self, **kwargs) -> BaseChatModel:
         """创建豆包聊天模型"""
-        logger.info(f"创建豆包聊天模型: {self.config.model_name}")
+        logger.debug(f"创建豆包聊天模型: {self.config.model_name}")
 
         return ChatOpenAI(
             api_key=self.config.api_key,
@@ -232,16 +255,18 @@ class AliyunProvider(BaseLLMProvider):
             temperature=settings.TEMPERATURE,
         )
 
-    def create_chat_model(self, **kwargs) -> BaseChatModel:
+    def _create_chat_model_instance(self, **kwargs) -> BaseChatModel:
         """创建阿里云聊天模型"""
-        logger.info(f"创建阿里云聊天模型: {self.config.model_name}")
+        logger.debug(f"创建阿里云聊天模型: {self.config.model_name}")
 
-        # 阿里云使用 langchain_community 的 ChatTongyi
         from langchain_community.chat_models import ChatTongyi
 
         return ChatTongyi(
             model=self.config.model_name,
             dashscope_api_key=self.config.api_key,
+            temperature=kwargs.get("temperature", self.config.temperature),
+            max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
+            streaming=kwargs.get("streaming", True),
         )
 
 
@@ -264,11 +289,10 @@ class MockProvider(BaseLLMProvider):
             temperature=0.0,
         )
 
-    def create_chat_model(self, **kwargs) -> BaseChatModel:
+    def _create_chat_model_instance(self, **kwargs) -> BaseChatModel:
         """创建模拟聊天模型"""
-        logger.info("创建模拟聊天模型（用于测试）")
+        logger.debug("创建模拟聊天模型（用于测试）")
 
-        # 使用 OpenAI 兼容的 Mock 模型
         return ChatOpenAI(
             api_key=self.config.api_key,
             base_url=self.config.api_base,
@@ -284,7 +308,6 @@ class MockProvider(BaseLLMProvider):
         last_message = messages[-1] if messages else {}
         content = last_message.get("content", "") if isinstance(last_message, dict) else str(last_message)
 
-        # 根据消息内容返回不同的模拟响应
         if "天气" in content:
             response = "抱歉，我是模拟模型，无法查询实时天气。请配置真实的 API Key。"
         elif "计算" in content or "+" in content or "-" in content:
@@ -295,17 +318,11 @@ class MockProvider(BaseLLMProvider):
         return AIMessage(content=response)
 
 
-# 提供者类型别名
-ProviderName = str  # "deepseek" | "doubao" | "aliyun" | "mock"
-
-# 提供者注册表
-_PROVIDERS: dict[str, type[BaseLLMProvider]] = {
+_PROVIDER_REGISTRY: dict[str, Type[BaseLLMProvider]] = {
     "deepseek": DeepSeekProvider,
     "doubao": DoubaoProvider,
     "aliyun": AliyunProvider,
     "mock": MockProvider,
-    # 兼容旧名称
-    "tongyi": AliyunProvider,
 }
 
 
@@ -325,12 +342,12 @@ def get_llm_provider(provider_name: str, config: Optional[LLMConfig] = None) -> 
     """
     provider_name = provider_name.lower()
 
-    if provider_name not in _PROVIDERS:
-        available = ", ".join(_PROVIDERS.keys())
+    if provider_name not in _PROVIDER_REGISTRY:
+        available = ", ".join(_PROVIDER_REGISTRY.keys())
         raise ValueError(f"不支持的 LLM 提供者: {provider_name}。支持的提供者: {available}")
 
     logger.info(f"获取 LLM 提供者: {provider_name}")
-    return _PROVIDERS[provider_name](config)
+    return _PROVIDER_REGISTRY[provider_name](config)
 
 
 def create_chat_model(
@@ -353,7 +370,6 @@ def create_chat_model(
     """
     provider = get_llm_provider(provider_name)
 
-    # 覆盖配置
     if model_name:
         provider.config.model_name = model_name
     if temperature is not None:
@@ -364,4 +380,4 @@ def create_chat_model(
 
 def list_providers() -> list[str]:
     """列出所有可用的 LLM 提供者"""
-    return list(_PROVIDERS.keys())
+    return list(_PROVIDER_REGISTRY.keys())

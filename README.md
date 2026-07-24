@@ -51,50 +51,94 @@
 x-langchain/
 ├── src/                                # 源代码目录
 │   ├── main.py                         # 项目主入口，CLI 交互接口
-│   ├── config/                         # 配置管理模块
-│   │   └── settings.py                 # 配置类，环境变量加载
 │   ├── core/                           # 核心模块
-│   │   └── logger.py                   # 日志系统
+│   │   ├── __init__.py               # 核心模块导出
+│   │   ├── config.py                  # 配置管理（pydantic-settings）
+│   │   └── logger.py                  # 日志系统（loguru）
 │   ├── constants/                      # 常量模块
-│   │   ├── develop.py                  # 开发相关常量
-│   │   └── streaming_modes.py          # 流式传输模式
-│   ├── models/                         # 模型管理模块
-│   │   └── providers.py                # 模型提供者与统一模型创建入口
-│   ├── agents/                         # Agent 模块
-│   │   ├── agent.py                    # LangGraph Agent 定义
-│   │   └── agent_factory.py            # Agent 工厂
-│   ├── tools/                          # 工具模块
-│   │   ├── weather_tool.py             # 天气查询（高德地图 API）
-│   │   ├── calendar_tool.py            # 日历查询
-│   │   ├── web_tool.py                 # 网络搜索（DuckDuckGo）
-│   │   ├── exchange_rate_tool.py       # 汇率查询
-│   │   ├── qiuchi_mcp/                 # 秋池 MCP 工具包
-│   │   └── text_to_sql/                # TextToSQL 工具链
-│   │       ├── question_rewrite_tool.py
-│   │       ├── get_schema_tool.py
-│   │       ├── generate_sql_tool.py
-│   │       ├── validate_sql_tool.py
-│   │       ├── execute_sql_tool.py
-│   │       └── convert_to_natural_language_tool.py
-│   └── infra/                          # 基础设施层
-│       └── mysql/                      # MySQL 数据库模块
-│           ├── __init__.py             # 模块导出
-│           ├── models.py               # ORM 模型 (Conversation, Message)
-│           ├── mysql.py                # 数据库连接管理
-│           └── operations.py           # TextToSQL 数据库操作
-├── tests/                              # 测试模块
-├── docs/                               # 文档目录
-├── examples/                           # 示例代码
-├── logs/                               # 日志目录
-├── .env.example                        # 环境变量配置示例
-├── pyproject.toml                      # 项目元数据和依赖
-├── Dockerfile                          # Docker 构建文件
-└── README.md                           # 项目文档
+│   │   ├── __init__.py               # 常量导出
+│   │   ├── develop.py                 # 开发相关常量
+│   │   └── streaming_modes.py         # 流式传输模式
+│   ├── llms/                          # LLM 模块（模型提供者）
+│   │   ├── __init__.py               # 模块导出
+│   │   └── providers.py               # 多模型提供者（DeepSeek/豆包/通义千问/Mock）
+│   ├── memories/                        # Memories 模块（记忆管理）
+│   │   ├── __init__.py               # 模块导出
+│   │   ├── base.py                   # 记忆基类和接口
+│   │   ├── history.py                # 对话历史记忆
+│   │   ├── persistence.py            # 持久化记忆存储
+│   │   └── manager.py                # 记忆管理器
+│   ├── planning/                      # Planning 模块（任务规划）
+│   │   ├── __init__.py               # 模块导出
+│   │   ├── base.py                   # 规划基类和任务定义
+│   │   ├── executor.py               # 任务执行器（顺序/并行）
+│   │   ├── strategies.py             # 规划策略（Simple/LLM）
+│   │   └── manager.py                # 规划管理器
+│   ├── action/                        # Action 模块（行动调度）
+│   │   ├── __init__.py               # 模块导出
+│   │   ├── base.py                   # 行动基类和接口
+│   │   ├── dispatcher.py             # 行动调度器
+│   │   └── executors.py              # 行动执行器
+│   ├── agent/                        # Agent 模块（核心）
+│   │   ├── __init__.py               # 模块导出
+│   │   ├── core.py                   # Agent 核心定义和配置
+│   │   ├── factory.py                # Agent 工厂
+│   │   └── langchain_agent.py        # LangChain Agent 实现
+│   ├── tools/                        # Tools 模块（工具系统）
+│   │   ├── __init__.py               # 工具模块导出
+│   │   ├── registry.py               # 工具注册表
+│   │   ├── weather_tool.py           # 天气查询
+│   │   ├── calendar_tool.py          # 日历查询
+│   │   ├── web_tool.py               # 网络搜索
+│   │   ├── exchange_rate_tool.py     # 汇率查询
+│   │   ├── qiuchi_mcp/               # 秋池 MCP 工具包
+│   │   └── text_to_sql/              # TextToSQL 工具链
+│   └── infra/                        # 基础设施层
+│       └── mysql/                    # MySQL 数据库模块
+│           ├── __init__.py
+│           ├── models.py              # ORM 模型
+│           ├── mysql.py               # 数据库连接
+│           └── operations.py          # 数据库操作
+├── tests/                             # 测试模块
+├── docs/                              # 文档目录
+├── examples/                          # 示例代码
+├── logs/                              # 日志目录
+├── .env.example                       # 环境变量配置示例
+├── pyproject.toml                     # 项目元数据和依赖
+├── Dockerfile                         # Docker 构建文件
+└── README.md                          # 项目文档
 ```
 
 ---
 
 ## 系统架构
+
+### 五大核心组件架构
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          Agent (协调器)                         │
+│  ┌─────────────┬─────────────┬─────────────┬─────────────┐    │
+│  │    LLM     │   Memory    │  Planning   │   Action    │    │
+│  │  (大脑)    │   (记忆)    │   (规划)    │   (执行)    │    │
+│  └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘    │
+│         │             │             │             │            │
+│         └─────────────┴─────────────┴─────────────┘            │
+│                              │                                 │
+│                              ▼                                 │
+│                    ┌─────────────────┐                         │
+│                    │     Tools       │                         │
+│                    │   (工具层)      │                         │
+│                    └─────────────────┘                         │
+└─────────────────────────────────────────────────────────────────┘
+
+组件职责：
+- LLM (llms/): 统一封装多种模型提供者（DeepSeek/豆包/通义千问/Mock）
+- Memories (memories/): 对话历史、持久化存储、多会话管理
+- Planning (planning/): 任务分析、拆分、执行（顺序/并行）
+- Action (action/): 工具调用调度、直接回复、复合行动
+- Tools (tools/): 插件化工具系统（天气/搜索/数据库/MCP）
+```
 
 ### 分层架构图
 
@@ -156,33 +200,65 @@ graph TB
     DB -.-> ES & GS
 ```
 
-### 核心业务流程图
+### 核心业务流程图（5步执行循环）
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  1. 上下文加载 (Memory)                                            │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ 用户输入 → 历史对话 → 上下文拼接 → 送入 LLM              │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  2. 推理决策与任务规划 (Planning)                                 │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ LLM 思考 → 判断是否需要工具 → 分析任务 → 生成分步方案    │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  3. 行动调度 (Action)                                             │
+│     ┌─────────────────────┬────────────────────────────────┐     │
+│     │  不需要工具          │  需要工具                       │     │
+│     │  直接回复            │  下发工具调用指令               │     │
+│     └─────────────────────┴────────────────────────────────┘     │
+│                              │                                    │
+│                              ▼                                    │
+│  4. 外部能力执行 (Tools)                                          │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ 工具注册表 → 执行工具函数 → 返回观测结果                 │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  5. 状态更新与循环判断                                            │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ 写入 Memory → 判断信息是否足够 → 继续循环或输出最终答案   │   │
+│     └──────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────┘
+```
 
 ```mermaid
 sequenceDiagram
     participant U as 用户
-    participant E as 入口(main.py)
-    participant AF as AgentFactory
-    participant MF as ModelProvider
-    participant TR as ToolRegistry
-    participant L as LLM(DeepSeek/豆包/通义/Mock)
-    participant T as 工具(本地/Function Calling 或 MCP)
+    participant M as Memory
+    participant P as Planning
+    participant A as Action
+    participant L as LLM
+    participant T as Tools
 
-    U->>E: 输入问题（如"上海天气"）
-    E->>AF: create_agent(model_name=MODEL_NAME)
-    AF->>MF: create_chat_model(model_name)
-    AF->>TR: get_all_tools()
-    TR->>TR: discover_function_calling_tools()（扫描 tools/）
-    TR->>TR: register_mcp_tools()（拉取 weather_mcp/qiuchi_mcp）
-    TR->>AF: 返回 tools 列表
-    AF->>L: agent.stream(messages)
-    L->>L: 判断需调用工具并生成 ToolCall
-    L->>AF: ToolCall(name, args)
-    AF->>T: 执行对应工具
-    T->>AF: ToolResult / ToolResponse
-    AF->>L: 回填工具结果
-    L->>AF: 生成最终回答（JSON 或自然语言）
-    AF->>U: 输出结果
+    U->>M: 用户输入
+    M->>L: 拼接历史上下文
+    L->>P: 推理决策
+    P->>A: 分发行动指令
+    alt 不需要工具
+        A->>U: 直接回复
+    else 需要工具
+        A->>T: 调用工具
+        T->>A: 返回结果
+        A->>M: 写入记忆
+        M->>L: 更新上下文
+        L->>P: 继续推理
+    end
+    P-->>U: 输出最终答案
 ```
 
 ### 模块依赖关系
@@ -194,22 +270,28 @@ graph LR
     end
 
     subgraph 核心模块
-        A[agents]
-        MO[models]
-        T[tools]
-        C[config]
-        CO[core]
+        AG[agent]
+        LL[llms]
+        MM[memories]
+        PP[planning]
+        AA[action]
+        TT[tools]
+        CC[core]
     end
 
-    M --> A
-    M --> C
-    M --> CO
-    A --> MO
-    A --> T
-    A --> C
-    MO --> C
-    T --> C
-    T --> CO
+    M --> AG
+    M --> CC
+    AG --> LL
+    AG --> MM
+    AG --> PP
+    AG --> AA
+    AG --> TT
+    AG --> CC
+    LL --> CC
+    MM --> CC
+    PP --> LL
+    AA --> TT
+    TT --> CC
 ```
 
 ---
