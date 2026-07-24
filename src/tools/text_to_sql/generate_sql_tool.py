@@ -64,7 +64,7 @@ class GenerateSQLTool(BaseTool):
                     "success": False,
                 }
 
-            from models import create_chat_model
+            from llms import create_chat_model
 
             # 获取 LLM 实例
             model = create_chat_model("deepseek")

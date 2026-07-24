@@ -27,7 +27,7 @@ class QuestionRewriteTool(BaseTool):
         try:
             logger.info(f"Rewriting question: {question}")
 
-            from models import create_chat_model
+            from llms import create_chat_model
 
             model = create_chat_model(settings.text_to_sql_model_name)
             system_prompt = """你负责为 TextToSQL 流程整理用户问题。

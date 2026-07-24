@@ -42,7 +42,7 @@ class ExecuteSQLTool(BaseTool):
             logger.info(f"执行SQL查询: {sql}")
 
             # 延迟导入，避免循环依赖
-            from infra.mysql import DBOperations
+            from infras.mysql import DBOperations
 
             db_ops: DBOperations = DBOperations()
             results: List[Dict[str, Any]] = db_ops.execute_sql(sql)

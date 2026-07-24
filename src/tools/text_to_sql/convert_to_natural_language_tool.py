@@ -55,7 +55,7 @@ class ConvertToNaturalLanguageTool(BaseTool):
                     "success": True,
                 }
 
-            from models import create_chat_model
+            from llms import create_chat_model
 
             model = create_chat_model(settings.text_to_sql_model_name)
             preview_rows = results[:20]

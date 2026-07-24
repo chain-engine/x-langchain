@@ -6,17 +6,28 @@ Agent 主类
 """
 
 import json
+from dataclasses import dataclass, field
 from typing import Any, Generator, List, Optional
 
 from core.logger import logger
 
 from constants import AgentMode
-from .core import AgentConfig, AgentResponse
+from core.config import AgentConfig, Settings
 from ..actions import ActionDispatcher
 from ..llms import create_chat_model
 from ..memories import BaseMemory, ConversationHistoryMemory
 from ..planning import PlanningManager
 from ..tools import ToolRegistry
+
+
+@dataclass
+class AgentResponse:
+    """Agent 响应"""
+    content: str
+    success: bool
+    tool_results: List[dict] = field(default_factory=list)
+    iterations: int = 0
+    metadata: dict = field(default_factory=dict)
 
 
 class Agent:

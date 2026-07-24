@@ -39,7 +39,7 @@ class GetSchemaTool(BaseTool):
             logger.info("获取数据库结构")
 
             # 延迟导入，避免循环依赖
-            from infra.mysql import DBOperations
+            from infras.mysql import DBOperations
 
             db_ops: DBOperations = DBOperations()
             schema_info: Dict[str, Any] = db_ops.get_schema_info()

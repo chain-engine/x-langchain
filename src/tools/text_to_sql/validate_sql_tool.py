@@ -42,7 +42,7 @@ class ValidateSQLTool(BaseTool):
             logger.info(f"验证SQL语法: {sql}")
 
             # 延迟导入，避免循环依赖
-            from infra.mysql import DBOperations
+            from infras.mysql import DBOperations
 
             db_ops: DBOperations = DBOperations()
             is_valid: bool = db_ops.validate_sql(sql)
