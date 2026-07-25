@@ -74,49 +74,277 @@ MODEL_NAME=tongyi uv run src/main.py
 
 ```
 x-langchain/
-├── config/             # Configuration management module
-│   ├── __init__.py
-│   └── settings.py     # Configuration class, loading from environment variables
-├── models/             # Model management module
-│   ├── __init__.py
-│   └── providers.py  # Model providers and unified model creation entry
-├── tools/              # Tool module
-│   ├── __init__.py
-│   ├── weather_tool.py  # Weather query tool
-│   ├── calendar_tool.py  # Calendar query tool
-│   ├── web_search_tool.py  # Web search tool
-│   └── text_to_sql/     # TextToSQL related tools
-│       ├── __init__.py
-│       ├── question_rewrite_tool.py  # Question rewriting tool
-│       ├── get_schema_tool.py  # Database schema tool
-│       ├── generate_sql_tool.py  # SQL generation tool
-│       ├── validate_sql_tool.py  # SQL validation tool
-│       ├── execute_sql_tool.py  # SQL execution tool
-│       └── convert_to_natural_language_tool.py  # Result conversion tool
-├── clients/            # Client module
-│   ├── __init__.py
-│   └── db/             # Database client
-│       ├── __init__.py
-│       └── client.py    # Database operations client
-├── core/               # Core module
-│   ├── __init__.py
-│   └── logger.py       # Logging system
-├── agents/             # Agent module
-│   ├── __init__.py
-│   └── agent_factory.py  # Agent factory for creating Agent instances
-├── tests/              # Test module
-│   ├── __init__.py
-│   ├── test_settings.py      # Configuration management tests
-│   ├── test_weather_tool.py  # Weather tool tests
-│   └── test_providers.py  # Model provider tests
-├── .env                # Environment variable configuration file
-├── .env.example        # Environment variable configuration example
-├── main.py             # Project main entry, implementing command-line interface
-├── pyproject.toml      # Project metadata and dependency management
-├── setup.py            # Project build configuration
-├── requirements.txt    # Dependency list
-└── README.md           # Project documentation
+├── src/                                # Source code directory
+│   ├── main.py                         # Project main entry, CLI interface
+│   ├── __init__.py                     # Package initialization
+│   ├── core/                           # Core module
+│   │   ├── __init__.py               # Core module exports
+│   │   ├── config.py                  # Configuration management (pydantic-settings)
+│   │   ├── logger.py                  # Logging system (loguru)
+│   │   ├── container.py              # Dependency injection container
+│   │   ├── middleware.py             # Middleware
+│   │   └── exceptions.py             # Custom exceptions
+│   ├── constants/                      # Constants module
+│   │   ├── __init__.py               # Constants exports
+│   │   ├── base.py                   # Base constants
+│   │   ├── develop.py                 # Development constants
+│   │   └── streaming_modes.py         # Streaming modes
+│   ├── llms/                          # LLM module (model providers)
+│   │   ├── __init__.py               # Module exports
+│   │   └── providers.py               # Multi-model providers (DeepSeek/Doubao/Tongyi/Mock)
+│   ├── memories/                        # Memories module (memory management)
+│   │   ├── __init__.py               # Module exports
+│   │   └── memory.py                 # Conversation memory (based on LangChain)
+│   ├── agent/                        # Agent module (core)
+│   │   ├── __init__.py               # Module exports
+│   │   └── lc_agent.py               # LangChain Agent implementation (based on LangGraph)
+│   ├── tools/                        # Tools module (tool system)
+│   │   ├── __init__.py               # Tools module exports
+│   │   ├── registry.py               # Tool registry
+│   │   ├── weather_tool.py           # Weather query
+│   │   ├── calendar_tool.py          # Calendar query
+│   │   ├── web_tool.py               # Web search
+│   │   ├── exchange_rate_tool.py     # Exchange rate query
+│   │   ├── qiuchi_mcp/               # Qiuchi MCP tools
+│   │   └── text_to_sql/              # TextToSQL toolchain
+│   │       ├── __init__.py
+│   │       ├── question_rewrite_tool.py    # Question rewriting
+│   │       ├── get_schema_tool.py         # Schema parsing
+│   │       ├── generate_sql_tool.py       # SQL generation
+│   │       ├── validate_sql_tool.py       # SQL validation
+│   │       ├── execute_sql_tool.py        # SQL execution
+│   │       └── convert_to_natural_language_tool.py  # Result conversion
+│   └── infras/                        # Infrastructure layer
+│       └── mysql/                    # MySQL database module
+│           ├── __init__.py
+│           ├── models.py              # ORM models
+│           ├── mysql.py               # Database connection
+│           └── operations.py          # Database operations
+├── tests/                             # Test module
+├── docs/                              # Documentation
+├── examples/                          # Examples
+├── logs/                              # Logs directory
+├── .env.example                       # Environment variables example
+├── pyproject.toml                     # Project metadata and dependencies
+├── Dockerfile                         # Docker build file
+└── README.md                          # Project documentation
 ```
+
+> **Note**: The Agent's "planning" and "action" capabilities are provided by LangChain/LangGraph's ReAct Agent, integrated into `agent/lc_agent.py`, not as a separate module.
+
+---
+
+## 🏗️ System Architecture
+
+### Core Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          Agent (Coordinator)                    │
+│  ┌─────────────┬─────────────┬─────────────┬─────────────┐    │
+│  │    LLM     │   Memory    │   ReAct    │   Tools    │    │
+│  │  (Brain)   │   (Memory)  │ (Reasoning)│  (Execute) │    │
+│  └─────────────┴─────────────┴─────────────┴─────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+
+Technology: Built on LangChain / LangGraph, ReAct paradigm unifies reasoning and execution
+```
+
+### Component Responsibilities
+
+| Component | Directory | Responsibility |
+|-----------|----------|----------------|
+| LLM | `llms/` | Unified multi-model providers (DeepSeek/Doubao/Tongyi/Mock) |
+| Memory | `memories/` | Conversation history (based on LangChain ChatMessageHistory) |
+| ReAct Agent | `agent/` | Reasoning-action loop, based on LangGraph |
+| Tools | `tools/` | Plugin-based tool system (weather/search/database/MCP) |
+
+### Layered Architecture
+
+```mermaid
+graph TB
+    subgraph User Layer
+        CLI[CLI Interface<br/>main.py]
+    end
+
+    subgraph Application Layer
+        AG[Agent Instance<br/>lc_agent.py]
+    end
+
+    subgraph Core Components
+        CFG[Configuration<br/>config.py]
+        LOG[Logging<br/>logger.py]
+        CTN[Container<br/>container.py]
+    end
+
+    subgraph Memory Layer
+        MM[Conversation Memory<br/>memories/memory.py]
+    end
+
+    subgraph Model Layer
+        MF[Model Provider<br/>providers.py]
+        DS[DeepSeek]
+        DB[Doubao]
+        TY[Tongyi]
+        MK[Mock]
+    end
+
+    subgraph Tools Layer
+        subgraph Local Tools
+            WT[Weather]
+            CT[Calendar]
+            WS[Web Search]
+            ER[Exchange Rate]
+        end
+        subgraph MCP Tools
+            WMCP[Weather MCP]
+            QMCP[Qiuchi MCP]
+        end
+        subgraph TextToSQL
+            QR[Question Rewrite]
+            GS[Get Schema]
+            SG[Generate SQL]
+            VS[Validate SQL]
+            ES[Execute SQL]
+            CN[Convert to NL]
+        end
+    end
+
+    subgraph Storage Layer
+        DB[(MySQL Database<br/>infras/mysql)]
+    end
+
+    CLI --> AG
+    AG --> MM
+    AG --> MF
+    AG --> TT[Tools]
+    AG --> CFG & LOG & CTN
+    MM --> CFG
+    MF --> DS & DB & TY & MK
+
+    AG -.-> QR & GS & SG & VS & ES & CN
+    GS -.-> DB
+    ES -.-> DB
+```
+
+> **Notes**:
+> - Core Components: Configuration, logging, dependency injection container
+> - Memory Layer: Conversation history management (based on LangChain ChatMessageHistory)
+> - Tools Layer: TextToSQL chain - Question Rewrite → Get Schema → Generate SQL → Validate → Execute → Convert to NL
+> - Storage Layer: MySQL database, required by Schema parsing and SQL execution
+
+### Core Business Flow (ReAct Loop)
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  1. Context Loading (Memory)                                       │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ User Input → History → Context Concatenation → LLM      │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  2. Reasoning (Think)                                            │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ LLM Thinks → Decide if Tool Needed → Analyze Task       │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  3. Action (Act)                                                │
+│     ┌─────────────────────┬────────────────────────────────┐     │
+│     │  No Tool Needed     │  Tool Needed                    │     │
+│     │  Direct Response    │  Execute Tool Call              │     │
+│     └─────────────────────┴────────────────────────────────┘     │
+│                              │                                    │
+│                              ▼                                    │
+│  4. Observation (Observe)                                        │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ Tool Result → Feedback to LLM → Decide Continue/End     │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  5. Loop or Output                                              │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ Continue Reasoning → Repeat Steps 2-4 → Or Output Answer │   │
+│     └──────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────┘
+
+Technology: Based on LangGraph for state machine management, supporting multi-round ReAct loops
+```
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant CLI as CLI
+    participant MM as Memory
+    participant G as LangGraph
+    participant L as LLM
+    participant T as Tools
+    participant DB as MySQL
+
+    U->>CLI: User Input
+    CLI->>MM: Load History
+    MM-->>CLI: Return History
+    CLI->>G: Create State
+    G->>L: Think: Reasoning
+    L-->>G: Return Result
+    alt No Tool Needed
+        G-->>CLI: Direct Response
+        CLI-->>U: Return Answer
+    else Tool Needed
+        G->>T: Act: Execute Tool
+        T->>DB: Query/Write Data
+        DB-->>T: Return Result
+        T-->>G: Observe: Return Result
+        G->>MM: Update Memory
+        G->>L: Continue Reasoning
+        loop ReAct Loop
+            L-->>G: Think
+            alt Continue Calling Tools
+                G->>T: Act
+                T-->>G: Observe
+            end
+        end
+        G-->>CLI: Output Final Answer
+        CLI-->>U: Return Answer
+    end
+```
+
+### Module Dependencies
+
+```mermaid
+graph LR
+    subgraph Entry
+        M[main.py]
+    end
+
+    subgraph Core Components
+        CC[core<br/>config/logger/container]
+    end
+
+    subgraph Core Modules
+        AG[agent<br/>lc_agent.py]
+        LL[llms]
+        MM[memories]
+        TT[tools]
+    end
+
+    subgraph Storage Layer
+        DB[(MySQL)]
+    end
+
+    M --> AG
+    M --> CC
+    AG --> LL
+    AG --> MM
+    AG --> TT
+    AG --> CC
+    LL --> CC
+    MM --> CC
+    TT --> CC
+    TT --> DB
+```
+
+> **Note**: Agent reasoning and action dispatch are implemented by LangChain/LangGraph, no separate Planning/Action modules needed.
 
 ---
 

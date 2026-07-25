@@ -147,6 +147,16 @@ graph TB
         AG[Agent 实例<br/>lc_agent.py]
     end
 
+    subgraph 核心组件层
+        CFG[配置管理<br/>config.py]
+        LOG[日志系统<br/>logger.py]
+        CTN[依赖注入容器<br/>container.py]
+    end
+
+    subgraph 记忆层
+        MM[对话记忆<br/>memories/memory.py]
+    end
+
     subgraph 模型层
         MF[模型提供者<br/>providers.py]
         DS[DeepSeek]
@@ -176,23 +186,28 @@ graph TB
         end
     end
 
-    subgraph 基础设施层
-        CFG[配置管理<br/>config.py]
-        LOG[日志系统<br/>logger.py]
-        CTN[依赖注入容器<br/>container.py]
-        DB[MySQL 模块<br/>infras/mysql]
+    subgraph 存储层
+        DB[(MySQL 数据库<br/>infras/mysql)]
     end
 
     CLI --> AG
+    AG --> MM
     AG --> MF
-    AG --> WT & CT & WS & ER & QR & SG & VS & ES & CN
-    MF --> DS & DB & TY & MK
+    AG --> TT[Tools]
     AG --> CFG & LOG & CTN
-    SG --> GS
-    ES --> VS
-    CN --> ES
-    VS --> ES
+    MM --> CFG
+    MF --> DS & DB & TY & MK
+
+    AG -.-> QR & GS & SG & VS & ES & CN
+    GS -.-> DB
+    ES -.-> DB
 ```
+
+> **说明**：
+> - 核心组件层：配置、日志、依赖注入容器等基础设施支撑
+> - 记忆层：对话历史管理（基于 LangChain ChatMessageHistory）
+> - 工具层：TextToSQL 工具链内，问题重写(QR) → 获取Schema → 生成SQL → 验证 → 执行 → 结果转换
+> - 存储层：MySQL 数据库，Schema 解析和 SQL 执行依赖此层
 
 ### 核心业务流程图（ReAct 执行循环）
 
@@ -235,21 +250,28 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant U as 用户
-    participant M as Memory
+    participant CLI as CLI
+    participant MM as Memory
     participant G as LangGraph
     participant L as LLM
     participant T as Tools
+    participant DB as MySQL
 
-    U->>M: 用户输入
-    M->>G: 加载历史上下文
+    U->>CLI: 用户输入
+    CLI->>MM: 加载历史上下文
+    MM-->>CLI: 返回历史消息
+    CLI->>G: 创建状态
     G->>L: Think: 推理决策
     L-->>G: 返回推理结果
     alt 不需要工具
-        G-->>U: 直接回复
+        G-->>CLI: 直接回复
+        CLI-->>U: 返回答案
     else 需要工具
         G->>T: Act: 执行工具
+        T->>DB: 查询/写入数据
+        DB-->>T: 返回结果
         T-->>G: Observe: 返回结果
-        G->>M: 更新记忆
+        G->>MM: 更新记忆
         G->>L: 继续推理
         loop ReAct 循环
             L-->>G: 思考
@@ -258,8 +280,9 @@ sequenceDiagram
                 T-->>G: Observe
             end
         end
+        G-->>CLI: 输出最终答案
+        CLI-->>U: 返回答案
     end
-    G-->>U: 输出最终答案
 ```
 
 ### 模块依赖关系
@@ -270,12 +293,19 @@ graph LR
         M[main.py]
     end
 
+    subgraph 核心组件
+        CC[core<br/>config/logger/container]
+    end
+
     subgraph 核心模块
         AG[agent<br/>lc_agent.py]
         LL[llms]
         MM[memories]
         TT[tools]
-        CC[core]
+    end
+
+    subgraph 存储层
+        DB[(MySQL)]
     end
 
     M --> AG
@@ -287,6 +317,7 @@ graph LR
     LL --> CC
     MM --> CC
     TT --> CC
+    TT --> DB
 ```
 
 > **说明**: Agent 的推理和行动调度由 LangChain/LangGraph 统一实现，不再需要独立的 Planning/Action 模块。
