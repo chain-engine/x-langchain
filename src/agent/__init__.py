@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Agent 模块
+Agent 模块 - 基于 LangChain 的 Agent 组件
 
-整合 LLM、Memory、Planning、Action、Tools 五大核心子系统。
+提供基于 LangGraph create_react_agent 的 LCAgent 实现。
 """
 
-from .agent import Agent, AgentResponse
-
+from .lc_agent import LCAgent, AgentResponse
 
 __all__ = [
-    "Agent",
-    "AgentConfig",
+    "LCAgent",
     "AgentResponse",
-    "create_agent_config",
 ]

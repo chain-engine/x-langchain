@@ -2,51 +2,47 @@
 """
 LangChain Memory 模块封装
 
-基于 LangChain Memory 组件，提供统一的记忆接口。
+基于 LangChain Core 的 Memory 组件，提供统一的记忆接口。
+使用 langchain_core.chat_history 和 RunnableWithMessageHistory。
 """
 
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional, Sequence
 
-from langchain_core.chat_history import BaseChatMessageHistory, InMemoryChatMessageHistory
+from langchain_core.chat_history import (
+    BaseChatMessageHistory,
+    InMemoryChatMessageHistory,
+)
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain.memory import ConversationBufferMemory as LCMemory
-from langchain.memory import VectorStoreRetrieverMemory as LCMemory as VectorMemory
+from langchain_core.runnables import Runnable
 
 from core.logger import logger
 
 
-class ChatMessageHistory(BaseChatMessageHistory):
+class ChatMessageHistory(InMemoryChatMessageHistory):
     """
     聊天消息历史
 
-    基于 LangChain 的 BaseChatMessageHistory 实现。
-    提供简单的消息存储和检索。
+    基于 LangChain Core 的 InMemoryChatMessageHistory 实现。
     """
 
     def __init__(self):
-        self._messages: List[BaseMessage] = []
+        super().__init__()
 
-    def add_messages(self, messages: List[BaseMessage]) -> None:
-        """添加消息"""
-        self._messages.extend(messages)
+    def add_user_message(self, message: str) -> None:
+        """添加用户消息"""
+        self.add_message(HumanMessage(content=message))
 
-    def clear(self) -> None:
-        """清空消息"""
-        self._messages.clear()
-
-    @property
-    def messages(self) -> List[BaseMessage]:
-        """获取所有消息"""
-        return self._messages
+    def add_ai_message(self, message: str) -> None:
+        """添加 AI 消息"""
+        self.add_message(AIMessage(content=message))
 
 
 class ConversationMemory:
     """
     对话记忆
 
-    基于 LangChain 封装的对话记忆组件。
+    基于 LangChain Core 封装的对话记忆组件。
     支持消息历史管理和上下文窗口限制。
-    使用 langchain.memory.ConversationBufferMemory
     """
 
     def __init__(
@@ -67,12 +63,12 @@ class ConversationMemory:
 
     def add_user_message(self, message: str) -> None:
         """添加用户消息"""
-        self._chat_history.add_messages([HumanMessage(content=message)])
+        self._chat_history.add_user_message(message)
         self._trim_history()
 
     def add_ai_message(self, message: str) -> None:
         """添加 AI 消息"""
-        self._chat_history.add_messages([AIMessage(content=message)])
+        self._chat_history.add_ai_message(message)
         self._trim_history()
 
     def add_message(self, role: str, content: str) -> None:
@@ -82,7 +78,7 @@ class ConversationMemory:
         elif role.lower() == "assistant":
             self.add_ai_message(content)
         else:
-            self._chat_history.add_messages([AIMessage(content=content)])
+            self._chat_history.add_message(HumanMessage(content=content))
 
     def get_messages(self) -> List[BaseMessage]:
         """获取所有消息"""
@@ -100,7 +96,7 @@ class ConversationMemory:
         messages = self._chat_history.messages
         if len(messages) > self._max_messages:
             # 保留最后 N 条消息
-            self._chat_history._messages = messages[-self._max_messages:]
+            self._chat_history.messages = messages[-self._max_messages:]
 
     def load_memory_variables(self, inputs: dict) -> dict:
         """加载记忆变量（供 Chain 使用）"""
@@ -121,14 +117,12 @@ class BufferMemory:
     """
     Buffer Memory
 
-    基于 LangChain 封装的缓冲区记忆，自动管理上下文。
-    使用 langchain.memory.ConversationBufferMemory
+    基于 LangChain Core 的缓冲区记忆，自动管理上下文。
     """
 
     def __init__(
         self,
         chat_memory: Optional[BaseChatMessageHistory] = None,
-        max_token_limit: int = 2000,
         return_messages: bool = True,
     ):
         """
@@ -136,90 +130,53 @@ class BufferMemory:
 
         Args:
             chat_memory: 聊天历史记录
-            max_token_limit: 最大 token 限制
             return_messages: 返回消息列表还是字符串
         """
-        self._memory = LCMemory(
-            chat_memory=chat_memory or InMemoryChatMessageHistory(),
-            max_token_limit=max_token_limit,
-            return_messages=return_messages,
-        )
-
-    def save_context(self, inputs: dict, outputs: dict) -> None:
-        """保存上下文"""
-        self._memory.save_context(inputs, outputs)
-
-    def load_memory_variables(self, inputs: dict) -> dict:
-        """加载记忆变量"""
-        return self._memory.load_memory_variables(inputs)
-
-    def clear(self) -> None:
-        """清空记忆"""
-        self._memory.clear()
+        self._chat_memory = chat_memory or InMemoryChatMessageHistory()
+        self._return_messages = return_messages
 
     @property
     def chat_memory(self) -> BaseChatMessageHistory:
         """获取聊天历史"""
-        return self._memory.chat_memory
-
-
-class VectorStoreRetrieverMemory:
-    """
-    向量存储记忆
-
-    基于向量检索的记忆组件，适合长对话历史检索。
-    使用 langchain.memory.VectorStoreRetrieverMemory
-    """
-
-    def __init__(
-        self,
-        vectorstore: Any,
-        k: int = 4,
-        search_kwargs: Optional[dict] = None,
-    ):
-        """
-        初始化向量存储记忆
-
-        Args:
-            vectorstore: 向量存储实例
-            k: 返回的最相似结果数量
-            search_kwargs: 搜索参数
-        """
-        self._memory = VectorMemory(
-            vectorstore=vectorstore,
-            k=k,
-            search_kwargs=search_kwargs or {},
-        )
-
-    def load_memory_variables(self, inputs: dict) -> dict:
-        """加载记忆变量"""
-        return self._memory.load_memory_variables(inputs)
+        return self._chat_memory
 
     def save_context(self, inputs: dict, outputs: dict) -> None:
         """保存上下文"""
-        self._memory.save_context(inputs, outputs)
+        user_input = inputs.get("input", "")
+        ai_output = outputs.get("output", "")
+
+        if user_input:
+            self._chat_memory.add_message(HumanMessage(content=user_input))
+        if ai_output:
+            self._chat_memory.add_message(AIMessage(content=ai_output))
+
+    def load_memory_variables(self, inputs: dict) -> dict:
+        """加载记忆变量"""
+        messages = self._chat_memory.messages
+        if self._return_messages:
+            return {"history": messages}
+        else:
+            return {"history": "\n".join(str(m.content) for m in messages)}
 
     def clear(self) -> None:
         """清空记忆"""
-        self._memory.clear()
+        self._chat_memory.clear()
 
 
-# 便捷函数
 def create_conversation_memory(max_messages: int = 50) -> ConversationMemory:
     """创建对话记忆"""
     return ConversationMemory(max_messages=max_messages)
 
 
-def create_buffer_memory(max_tokens: int = 2000) -> BufferMemory:
+def create_buffer_memory() -> BufferMemory:
     """创建缓冲区记忆"""
-    return BufferMemory(max_token_limit=max_tokens)
+    return BufferMemory()
 
 
 __all__ = [
     "ChatMessageHistory",
     "ConversationMemory",
     "BufferMemory",
-    "VectorStoreRetrieverMemory",
     "create_conversation_memory",
     "create_buffer_memory",
 ]

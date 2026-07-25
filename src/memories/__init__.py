@@ -1,41 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-记忆（Memory）模块
+Memories 模块 - 基于 LangChain 的记忆组件
 
-提供多层次的记忆管理功能：
-- 基础记忆接口
-- 对话历史记忆
-- 持久化记忆存储
-- 记忆管理器
-
-设计原则：
-- 面向对象：使用抽象基类定义接口
-- 组合优于继承：核心功能通过组合实现
-- 单一职责：每个类只负责一种记忆类型
+提供基于 LangChain Core 的记忆实现：
+- ChatMessageHistory: 聊天消息历史
+- ConversationMemory: 对话记忆
+- BufferMemory: 缓冲区记忆
 """
 
-from .base import BaseMemory, MemoryMessage, MessageRole
-from .history import ConversationHistoryMemory
-from .persistence import PersistentMemory, SQLiteMemoryStore
-from .manager import MemoryManager
-from .structured_result import (
-    StructuredResult,
-    extract_structured_result,
-    SQLResultExtractor,
-    WeatherResultExtractor,
+from .memory import (
+    ChatMessageHistory,
+    ConversationMemory,
+    BufferMemory,
+    create_conversation_memory,
+    create_buffer_memory,
 )
 
-
 __all__ = [
-    "BaseMemory",
-    "MemoryMessage",
-    "MessageRole",
-    "ConversationHistoryMemory",
-    "PersistentMemory",
-    "SQLiteMemoryStore",
-    "MemoryManager",
-    "StructuredResult",
-    "extract_structured_result",
-    "SQLResultExtractor",
-    "WeatherResultExtractor",
+    "ChatMessageHistory",
+    "ConversationMemory",
+    "BufferMemory",
+    "create_conversation_memory",
+    "create_buffer_memory",
 ]

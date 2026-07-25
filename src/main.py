@@ -9,7 +9,7 @@ import sys
 import warnings
 
 from .core import settings, logger
-from .agents import LCAgent
+from .agent import LCAgent
 
 
 warnings.filterwarnings(
