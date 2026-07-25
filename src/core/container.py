@@ -3,13 +3,12 @@
 依赖注入容器
 
 基于 LangChain 标准组件的统一依赖管理。
-支持上下文管理器模式，类似于 FastAPI 的 lifespan。
+支持上下文管理器模式管理生命周期。
 """
 
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Generator, Optional, TypeVar
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -24,20 +23,26 @@ _T = TypeVar("_T")
 
 class Container:
     """
-    依赖注入容器
+    依赖注入容器（单例模式）
 
     使用上下文管理器模式管理全局依赖实例的生命周期。
 
-    用法示例：
-        # 同步方式
-        with Container() as container:
-            agent = container.agent
-            ...
+    使用方式有两种：
 
-        # 异步方式
-        async with Container() as container:
-            agent = await container.get_agent()
-            ...
+    方式一：分步写法（先获取容器，再进入上下文）
+        from core.container import lifespan_container
+
+        container = lifespan_container()      # 创建/获取单例
+        with container:                       # 进入上下文，触发 startup
+            agent = container.agent            # 使用依赖
+        # 退出上下文时自动调用 shutdown
+
+    方式二：链式写法（直接在 with 中调用）
+        from core.container import lifespan_container
+
+        with lifespan_container() as container:   # 创建容器并立即进入上下文
+            agent = container.agent                 # 使用依赖
+        # 退出上下文时自动调用 shutdown
     """
 
     _instance: Optional["Container"] = None
@@ -110,20 +115,20 @@ class Container:
     def db_engine(self) -> Engine:
         """获取数据库引擎（懒加载）"""
         if self._engine is None:
-            from src.infras.mysql.mysql import engine as _engine
+            from infras.mysql.mysql import engine as _engine
 
             self._engine = _engine
         return self._engine
 
     def get_db(self) -> Generator[Session, None, None]:
         """获取同步数据库会话（依赖注入用）"""
-        from src.infras.mysql.mysql import get_db as _get_db
+        from infras.mysql.mysql import get_db as _get_db
 
         yield from _get_db()
 
     def get_db_operations(self) -> Any:
         """获取数据库操作工具（TextToSQL 用）"""
-        from src.infras.mysql.operations import DBOperations
+        from infras.mysql.operations import DBOperations
 
         return DBOperations()
 
@@ -137,7 +142,7 @@ class Container:
         **kwargs,
     ) -> Any:
         """获取 LLM 提供者实例"""
-        from src.llms.providers import get_llm_provider
+        from llms.providers import get_llm_provider
 
         key = f"{provider_name}:{hash(frozenset(kwargs.items()))}"
         if key not in self._llm_providers:
@@ -152,7 +157,7 @@ class Container:
         **kwargs,
     ) -> Any:
         """创建聊天模型"""
-        from src.llms.providers import create_chat_model
+        from llms.providers import create_chat_model
 
         return create_chat_model(
             provider_name=provider_name,
@@ -169,9 +174,9 @@ class Container:
     def agent(self) -> Any:
         """获取 Agent 实例（懒加载）"""
         if self._agent is None:
-            from src.core import settings
+            from . import settings
 
-            from .agent import LCAgent
+            from agent import LCAgent
 
             self._agent = LCAgent(config=settings.agent)
             logger.info("Agent 实例已创建")
@@ -198,7 +203,7 @@ class Container:
         Returns:
             LCAgent 实例
         """
-        from src.agent.lc_agent import LCAgent
+        from agent.lc_agent import LCAgent
 
         llm = self.create_chat_model(
             provider_name=model_provider,
@@ -223,16 +228,20 @@ class Container:
 
 def lifespan_container() -> Container:
     """
-    创建依赖注入容器
+    创建依赖注入容器（返回单例）
 
-    用法：
-        from src.core.container import lifespan_container
+    用法示例：
 
-        def main():
-            container = lifespan_container()
-            with container:
-                agent = container.agent
-                ...
+        from core.container import lifespan_container
+
+        # 方式一：分步写法
+        container = lifespan_container()
+        with container:
+            agent = container.agent
+
+        # 方式二：链式写法（更简洁，推荐）
+        with lifespan_container() as container:
+            agent = container.agent
     """
     return Container()
 

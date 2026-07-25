@@ -12,10 +12,10 @@ x-langchain - LangChain 学习与实践项目
 
 __version__ = "0.3.0"
 
-from . import agent
-from . import llms
-from . import memories
-from . import tools
+import agent
+import llms
+import memories
+import tools
 
 __all__ = [
     "agent",

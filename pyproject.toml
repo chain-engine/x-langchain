@@ -50,11 +50,13 @@ ui = [
 requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+packages = ["agent", "core", "infras", "llms", "memories", "tools", "constants"]
+package-dir = {"" = "src"}
+py-modules = ["main"]
 
 [project.scripts]
-x-langchain = "src.main:main"
+x-langchain = "main:run"
 
 [dependency-groups]
 dev = [

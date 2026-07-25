@@ -8,8 +8,8 @@
 import sys
 import warnings
 
-from .core import settings, logger
-from .core.container import lifespan_container
+from core import settings, logger
+from core.container import lifespan_container
 
 
 warnings.filterwarnings(
@@ -25,10 +25,8 @@ def interactive_chat() -> None:
 
     从容器获取 Agent 实例进行对话
     """
-    # 从容器获取 Agent
-    container = lifespan_container()
-    with container as ctx:
-        agent = ctx.agent
+    with lifespan_container() as container:
+        agent = container.agent
 
         print("\n" + "=" * 50)
         print("欢迎使用智能助手！")
@@ -47,7 +45,6 @@ def interactive_chat() -> None:
                     continue
 
                 print()
-                # 调用 Agent
                 response = agent.invoke(user_input)
 
                 if response.success:
@@ -77,7 +74,6 @@ def main() -> None:
         logger.info(f"配置信息: DEBUG={settings.DEBUG}")
         logger.info("正在启动应用...")
 
-        # 启动交互式对话（容器生命周期由 lifespan 管理）
         interactive_chat()
 
     except ImportError as e:
@@ -88,16 +84,17 @@ def main() -> None:
         logger.error(f"网络连接失败: {e}")
         logger.info("请检查网络连接和 API 端点配置")
         sys.exit(1)
-    except ValueError as e:
-        logger.error(f"参数错误: {e}")
-        sys.exit(1)
+    except KeyboardInterrupt:
+        print("\n\n已取消启动")
+        sys.exit(0)
     except Exception as e:
-        logger.error(f"错误: {e}")
-        if settings.DEBUG:
-            import traceback
-
-            logger.debug(traceback.format_exc())
+        logger.error(f"启动失败: {e}")
         sys.exit(1)
+
+
+def run() -> None:
+    """setuptools entry point 入口"""
+    main()
 
 
 if __name__ == "__main__":

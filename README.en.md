@@ -45,7 +45,7 @@
 
 ```bash
 # Clone the project
-git clone https://gitee.com/chain-engine/x-langchain.git
+git clone https://github.com/chain-engine/x-langchain.git
 cd x-langchain
 
 # Install dependencies (recommended to use uv)
@@ -497,7 +497,7 @@ If you encounter any issues during use, please get support through the following
 
 - Check [LangChain Official Documentation](https://python.langchain.com/docs/get_started/introduction)
 - Check [Project Documentation](README.md)
-- Submit [GitHub Issue](https://gitee.com/chain-engine/x-langchain/issues)
+- Submit [GitHub Issue](https://github.com/chain-engine/x-langchain/issues)
 
 ### Contribution
 

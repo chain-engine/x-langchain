@@ -363,7 +363,7 @@ graph LR
 ### 项目克隆
 
 ```bash
-git clone https://gitee.com/chain-engine/x-langchain.git
+git clone https://github.com/chain-engine/x-langchain.git
 cd x-langchain
 ```
 
@@ -617,4 +617,4 @@ DB_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME
 | **邮箱** | john.young@foxmail.com |
 | **Gitee** | https://gitee.com/yeyushilai |
 | **GitHub** | https://github.com/yeyushilai |
-| **项目地址** | https://gitee.com/chain-engine/x-langchain |
+| **项目地址** | https://github.com/chain-engine/x-langchain |
