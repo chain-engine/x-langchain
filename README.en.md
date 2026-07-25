@@ -138,21 +138,17 @@ x-langchain/
 
 ### Core Architecture
 
-```mermaid
-graph TB
-    subgraph Agent["Agent (Coordinator)"]
-        LLM["LLM (Brain)"]
-        MEM["Memory"]
-        REACT["ReAct (Reasoning)"]
-        TOOLS["Tools (Execute)"]
-    end
-
-    LLM --- MEM
-    LLM --- REACT
-    LLM --- TOOLS
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                          Agent (Coordinator)                    │
+│  ┌─────────────┬─────────────┬─────────────┬─────────────┐    │
+│  │    LLM     │   Memory    │   ReAct    │   Tools    │    │
+│  │  (Brain)   │   (Memory)  │ (Reasoning)│  (Execute) │    │
+│  └─────────────┴─────────────┴─────────────┴─────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
 
-> Technology: Built on LangChain / LangGraph, ReAct paradigm unifies reasoning and execution
+Technology: Built on LangChain / LangGraph, ReAct paradigm unifies reasoning and execution
+```
 
 ### Component Responsibilities
 
@@ -188,7 +184,7 @@ graph TB
     subgraph Model Layer
         MF[Model Provider<br/>providers.py]
         DS[DeepSeek]
-        DB[Doubao]
+        DJ[Doubao]
         TY[Tongyi]
         MK[Mock]
     end
@@ -214,17 +210,16 @@ graph TB
         end
     end
 
-    subgraph Infrastructure Layer
-        DB[(MySQL<br/>infras/mysql)]
+    subgraph Storage Layer
+        DB[(MySQL Database<br/>infras/mysql)]
     end
 
     CLI --> AG
     AG --> MM
     AG --> MF
-    AG --> TT[Tools]
     AG --> CFG & LOG & CTN
     MM --> CFG
-    MF --> DS & DB & TY & MK
+    MF --> DS & DJ & TY & MK
 
     AG -.-> QR & GS & SG & VS & ES & CN
     GS -.-> DB
@@ -235,36 +230,45 @@ graph TB
 > - Core Components: Configuration, logging, dependency injection container
 > - Memory Layer: Conversation history management (based on LangChain ChatMessageHistory)
 > - Tools Layer: TextToSQL chain - Question Rewrite → Get Schema → Generate SQL → Validate → Execute → Convert to NL
-> - Infrastructure Layer: MySQL database (infras/mysql), required by Schema parsing and SQL execution
+> - Storage Layer: MySQL database, required by Schema parsing and SQL execution
 
 ### Core Business Flow (ReAct Loop)
 
-```mermaid
-flowchart TD
-    subgraph M["1. Context Loading (Memory)"]
-        A1["User Input"]
-        A2["History"]
-        A3["Context Concatenation"]
-        A4["Send to LLM"]
-        A1 --> A2 --> A3 --> A4
-    end
-
-    M --> T["2. Reasoning (Think)"]
-    T --> T1{"Need Tool?"}
-
-    T1 -->|No| R1["Direct Response"]
-    T1 -->|Yes| A["3. Action (Act)"]
-    A --> O["4. Observation (Observe)"]
-    O --> C{"Continue or End?"}
-
-    C -->|Continue| T
-    C -->|End| R2["Output Final Answer"]
-
-    R1 --> E["End"]
-    R2 --> E
 ```
+┌────────────────────────────────────────────────────────────────────┐
+│  1. Context Loading (Memory)                                       │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ User Input → History → Context Concatenation → LLM      │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  2. Reasoning (Think)                                            │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ LLM Thinks → Decide if Tool Needed → Analyze Task       │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  3. Action (Act)                                                │
+│     ┌─────────────────────┬────────────────────────────────┐     │
+│     │  No Tool Needed     │  Tool Needed                    │     │
+│     │  Direct Response    │  Execute Tool Call              │     │
+│     └─────────────────────┴────────────────────────────────┘     │
+│                              │                                    │
+│                              ▼                                    │
+│  4. Observation (Observe)                                        │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ Tool Result → Feedback to LLM → Decide Continue/End     │   │
+│     └──────────────────────────────────────────────────────────┘   │
+│                              │                                    │
+│                              ▼                                    │
+│  5. Loop or Output                                              │
+│     ┌──────────────────────────────────────────────────────────┐   │
+│     │ Continue Reasoning → Repeat Steps 2-4 → Or Output Answer │   │
+│     └──────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────┘
 
-> Technology: Based on LangGraph for state machine management, supporting multi-round ReAct loops
+Technology: Based on LangGraph for state machine management, supporting multi-round ReAct loops
+```
 
 ```mermaid
 sequenceDiagram
@@ -322,24 +326,17 @@ graph LR
         MM[memories]
     end
 
-    subgraph Tools Layer
-        TT[tools]
-    end
-
-    subgraph Infrastructure Layer
-        IN[infras<br/>mysql]
+    subgraph Storage Layer
+        DB[(MySQL)]
     end
 
     M --> AG
     M --> CC
     AG --> LL
     AG --> MM
-    AG --> TT
     AG --> CC
     LL --> CC
     MM --> CC
-    TT --> CC
-    TT --> IN
 ```
 
 > **Note**: Agent reasoning and action dispatch are implemented by LangChain/LangGraph, no separate Planning/Action modules needed.
