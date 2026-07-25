@@ -17,8 +17,8 @@ from core.logger import logger
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
 
-    from src.llms.providers import BaseChatModel
-    from src.memories.langchain_memory import BaseMemory
+    from llms.providers import BaseChatModel
+    from memories.langchain_memory import BaseMemory
 
 _T = TypeVar("_T")
 
@@ -52,18 +52,18 @@ class Container:
     def engine(self) -> Engine:
         """获取同步数据库引擎（懒加载）"""
         if self._engine is None:
-            from src.infras.mysql.mysql import engine as _engine
+            from infras.mysql.mysql import engine as _engine
             self._engine = _engine
         return self._engine
 
     def get_db(self) -> Generator[Session, None, None]:
         """获取同步数据库会话（依赖注入用）"""
-        from src.infras.mysql.mysql import get_db as _get_db
+        from infras.mysql.mysql import get_db as _get_db
         yield from _get_db()
 
     def get_db_operations(self) -> Any:
         """获取数据库操作工具（TextToSQL 用）"""
-        from src.infras.mysql.operations import DBOperations
+        from infras.mysql.operations import DBOperations
         return DBOperations()
 
     # endregion
@@ -76,7 +76,7 @@ class Container:
         **kwargs,
     ) -> Any:
         """获取 LLM 提供者实例"""
-        from src.llms.providers import get_llm_provider
+        from llms.providers import get_llm_provider
         key = f"{provider_name}:{hash(frozenset(kwargs.items()))}"
         if key not in self._llm_providers:
             self._llm_providers[key] = get_llm_provider(provider_name, **kwargs)
@@ -90,7 +90,7 @@ class Container:
         **kwargs,
     ) -> Any:
         """创建聊天模型"""
-        from src.llms.providers import create_chat_model
+        from llms.providers import create_chat_model
         return create_chat_model(
             provider_name=provider_name,
             model_name=model_name,
@@ -123,7 +123,7 @@ class Container:
         Returns:
             LCAgent 实例
         """
-        from src.agent.lc_agent import LCAgent
+        from agent.lc_agent import LCAgent
 
         llm = self.create_chat_model(
             provider_name=model_provider,
