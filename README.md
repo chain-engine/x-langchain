@@ -52,12 +52,17 @@
 x-langchain/
 ├── src/                                # 源代码目录
 │   ├── main.py                         # 项目主入口，CLI 交互接口
+│   ├── __init__.py                     # 包初始化
 │   ├── core/                           # 核心模块
 │   │   ├── __init__.py               # 核心模块导出
 │   │   ├── config.py                  # 配置管理（pydantic-settings）
-│   │   └── logger.py                  # 日志系统（loguru）
+│   │   ├── logger.py                  # 日志系统（loguru）
+│   │   ├── container.py              # 依赖注入容器
+│   │   ├── middleware.py             # 中间件
+│   │   └── exceptions.py             # 自定义异常
 │   ├── constants/                      # 常量模块
 │   │   ├── __init__.py               # 常量导出
+│   │   ├── base.py                   # 基础常量
 │   │   ├── develop.py                 # 开发相关常量
 │   │   └── streaming_modes.py         # 流式传输模式
 │   ├── llms/                          # LLM 模块（模型提供者）
@@ -65,26 +70,10 @@ x-langchain/
 │   │   └── providers.py               # 多模型提供者（DeepSeek/豆包/通义千问/Mock）
 │   ├── memories/                        # Memories 模块（记忆管理）
 │   │   ├── __init__.py               # 模块导出
-│   │   ├── base.py                   # 记忆基类和接口
-│   │   ├── history.py                # 对话历史记忆
-│   │   ├── persistence.py            # 持久化记忆存储
-│   │   └── manager.py                # 记忆管理器
-│   ├── planning/                      # Planning 模块（任务规划）
-│   │   ├── __init__.py               # 模块导出
-│   │   ├── base.py                   # 规划基类和任务定义
-│   │   ├── executor.py               # 任务执行器（顺序/并行）
-│   │   ├── strategies.py             # 规划策略（Simple/LLM）
-│   │   └── manager.py                # 规划管理器
-│   ├── action/                        # Action 模块（行动调度）
-│   │   ├── __init__.py               # 模块导出
-│   │   ├── base.py                   # 行动基类和接口
-│   │   ├── dispatcher.py             # 行动调度器
-│   │   └── executors.py              # 行动执行器
+│   │   └── memory.py                 # 对话记忆（基于 LangChain）
 │   ├── agent/                        # Agent 模块（核心）
 │   │   ├── __init__.py               # 模块导出
-│   │   ├── core.py                   # Agent 核心定义和配置
-│   │   ├── factory.py                # Agent 工厂
-│   │   └── langchain_agent.py        # LangChain Agent 实现
+│   │   └── lc_agent.py               # LangChain Agent 实现（基于 LangGraph）
 │   ├── tools/                        # Tools 模块（工具系统）
 │   │   ├── __init__.py               # 工具模块导出
 │   │   ├── registry.py               # 工具注册表
@@ -94,7 +83,14 @@ x-langchain/
 │   │   ├── exchange_rate_tool.py     # 汇率查询
 │   │   ├── qiuchi_mcp/               # 秋池 MCP 工具包
 │   │   └── text_to_sql/              # TextToSQL 工具链
-│   └── infra/                        # 基础设施层
+│   │       ├── __init__.py
+│   │       ├── question_rewrite_tool.py    # 问题重写
+│   │       ├── get_schema_tool.py         # Schema 解析
+│   │       ├── generate_sql_tool.py       # SQL 生成
+│   │       ├── validate_sql_tool.py       # SQL 验证
+│   │       ├── execute_sql_tool.py        # SQL 执行
+│   │       └── convert_to_natural_language_tool.py  # 结果转换
+│   └── infras/                        # 基础设施层
 │       └── mysql/                    # MySQL 数据库模块
 │           ├── __init__.py
 │           ├── models.py              # ORM 模型
@@ -110,36 +106,34 @@ x-langchain/
 └── README.md                          # 项目文档
 ```
 
+> **Note**: Agent 的"计划"和"行动"能力由 LangChain/LangGraph 的 ReAct Agent 统一提供，已集成在 `agent/lc_agent.py` 中，不作为独立模块存在。
+
 ---
 
 ## 系统架构
 
-### 五大核心组件架构
+### 核心架构
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                          Agent (协调器)                         │
 │  ┌─────────────┬─────────────┬─────────────┬─────────────┐    │
-│  │    LLM     │   Memory    │  Planning   │   Action    │    │
-│  │  (大脑)    │   (记忆)    │   (规划)    │   (执行)    │    │
-│  └──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘    │
-│         │             │             │             │            │
-│         └─────────────┴─────────────┴─────────────┘            │
-│                              │                                 │
-│                              ▼                                 │
-│                    ┌─────────────────┐                         │
-│                    │     Tools       │                         │
-│                    │   (工具层)      │                         │
-│                    └─────────────────┘                         │
+│  │    LLM     │   Memory    │  ReAct     │   Tools    │    │
+│  │  (大脑)    │   (记忆)    │ (推理执行) │   (执行)   │    │
+│  └─────────────┴─────────────┴─────────────┴─────────────┘    │
 └─────────────────────────────────────────────────────────────────┘
 
-组件职责：
-- LLM (llms/): 统一封装多种模型提供者（DeepSeek/豆包/通义千问/Mock）
-- Memories (memories/): 对话历史、持久化存储、多会话管理
-- Planning (planning/): 任务分析、拆分、执行（顺序/并行）
-- Action (action/): 工具调用调度、直接回复、复合行动
-- Tools (tools/): 插件化工具系统（天气/搜索/数据库/MCP）
+技术实现：基于 LangChain / LangGraph 构建，ReAct 范式统一推理与执行
 ```
+
+### 组件职责
+
+| 组件 | 目录 | 职责 |
+|------|------|------|
+| LLM | `llms/` | 统一封装多种模型提供者（DeepSeek/豆包/通义千问/Mock） |
+| Memory | `memories/` | 对话历史记忆（基于 LangChain ChatMessageHistory） |
+| ReAct Agent | `agent/` | 推理-行动循环，基于 LangGraph 实现 |
+| Tools | `tools/` | 插件化工具系统（天气/搜索/数据库/MCP） |
 
 ### 分层架构图
 
@@ -150,8 +144,7 @@ graph TB
     end
 
     subgraph 应用层
-        AF[Agent 工厂<br/>agent_factory.py]
-        AG[Agent 实例]
+        AG[Agent 实例<br/>lc_agent.py]
     end
 
     subgraph 模型层
@@ -184,24 +177,24 @@ graph TB
     end
 
     subgraph 基础设施层
-        CFG[配置管理<br/>settings.py]
+        CFG[配置管理<br/>config.py]
         LOG[日志系统<br/>logger.py]
-        DB[MySQL 模块<br/>infra/mysql]
+        CTN[依赖注入容器<br/>container.py]
+        DB[MySQL 模块<br/>infras/mysql]
     end
 
-    CLI --> AF
-    AF --> AG
-    AF --> MF
+    CLI --> AG
+    AG --> MF
+    AG --> WT & CT & WS & ER & QR & SG & VS & ES & CN
     MF --> DS & DB & TY & MK
-    AG --> WT & CT & WS & ER & WMCP & QMCP
-    AG --> QR --> GS --> SG --> VS --> ES --> CN
-
-    CFG -.-> AF & MF
-    LOG -.-> AF & MF & AG
-    DB -.-> ES & GS
+    AG --> CFG & LOG & CTN
+    SG --> GS
+    ES --> VS
+    CN --> ES
+    VS --> ES
 ```
 
-### 核心业务流程图（5步执行循环）
+### 核心业务流程图（ReAct 执行循环）
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
@@ -211,55 +204,62 @@ graph TB
 │     └──────────────────────────────────────────────────────────┘   │
 │                              │                                    │
 │                              ▼                                    │
-│  2. 推理决策与任务规划 (Planning)                                 │
+│  2. 推理思考 (Think)                                              │
 │     ┌──────────────────────────────────────────────────────────┐   │
-│     │ LLM 思考 → 判断是否需要工具 → 分析任务 → 生成分步方案    │   │
+│     │ LLM 思考 → 判断是否需要工具 → 分析任务                   │   │
 │     └──────────────────────────────────────────────────────────┘   │
 │                              │                                    │
 │                              ▼                                    │
-│  3. 行动调度 (Action)                                             │
+│  3. 行动执行 (Act)                                                │
 │     ┌─────────────────────┬────────────────────────────────┐     │
 │     │  不需要工具          │  需要工具                       │     │
-│     │  直接回复            │  下发工具调用指令               │     │
+│     │  直接回复            │  执行工具调用                   │     │
 │     └─────────────────────┴────────────────────────────────┘     │
 │                              │                                    │
 │                              ▼                                    │
-│  4. 外部能力执行 (Tools)                                          │
+│  4. 观测结果 (Observe)                                           │
 │     ┌──────────────────────────────────────────────────────────┐   │
-│     │ 工具注册表 → 执行工具函数 → 返回观测结果                 │   │
+│     │ 工具结果 → 反馈给 LLM → 判断是否继续或结束               │   │
 │     └──────────────────────────────────────────────────────────┘   │
 │                              │                                    │
 │                              ▼                                    │
-│  5. 状态更新与循环判断                                            │
+│  5. 循环或输出                                                    │
 │     ┌──────────────────────────────────────────────────────────┐   │
-│     │ 写入 Memory → 判断信息是否足够 → 继续循环或输出最终答案   │   │
+│     │ 继续推理 → 重复步骤 2-4 → 或输出最终答案                 │   │
 │     └──────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────────┘
+
+技术栈：基于 LangGraph 实现状态机管理，支持多轮 ReAct 循环
 ```
 
 ```mermaid
 sequenceDiagram
     participant U as 用户
     participant M as Memory
-    participant P as Planning
-    participant A as Action
+    participant G as LangGraph
     participant L as LLM
     participant T as Tools
 
     U->>M: 用户输入
-    M->>L: 拼接历史上下文
-    L->>P: 推理决策
-    P->>A: 分发行动指令
+    M->>G: 加载历史上下文
+    G->>L: Think: 推理决策
+    L-->>G: 返回推理结果
     alt 不需要工具
-        A->>U: 直接回复
+        G-->>U: 直接回复
     else 需要工具
-        A->>T: 调用工具
-        T->>A: 返回结果
-        A->>M: 写入记忆
-        M->>L: 更新上下文
-        L->>P: 继续推理
+        G->>T: Act: 执行工具
+        T-->>G: Observe: 返回结果
+        G->>M: 更新记忆
+        G->>L: 继续推理
+        loop ReAct 循环
+            L-->>G: 思考
+            alt 继续调用工具
+                G->>T: Act
+                T-->>G: Observe
+            end
+        end
     end
-    P-->>U: 输出最终答案
+    G-->>U: 输出最终答案
 ```
 
 ### 模块依赖关系
@@ -271,11 +271,9 @@ graph LR
     end
 
     subgraph 核心模块
-        AG[agent]
+        AG[agent<br/>lc_agent.py]
         LL[llms]
         MM[memories]
-        PP[planning]
-        AA[action]
         TT[tools]
         CC[core]
     end
@@ -284,16 +282,14 @@ graph LR
     M --> CC
     AG --> LL
     AG --> MM
-    AG --> PP
-    AG --> AA
     AG --> TT
     AG --> CC
     LL --> CC
     MM --> CC
-    PP --> LL
-    AA --> TT
     TT --> CC
 ```
+
+> **说明**: Agent 的推理和行动调度由 LangChain/LangGraph 统一实现，不再需要独立的 Planning/Action 模块。
 
 ---
 
