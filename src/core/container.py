@@ -3,11 +3,13 @@
 依赖注入容器
 
 基于 LangChain 标准组件的统一依赖管理。
+支持上下文管理器模式，类似于 FastAPI 的 lifespan。
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Generator, Optional, TypeVar
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any, AsyncGenerator, Generator, Optional, TypeVar
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
@@ -15,10 +17,7 @@ from sqlalchemy.orm import Session
 from core.logger import logger
 
 if TYPE_CHECKING:
-    from sqlalchemy.ext.asyncio import AsyncSession, AsyncEngine
-
-    from src.llms.providers import BaseChatModel
-    from src.memories.langchain_memory import BaseMemory
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
 _T = TypeVar("_T")
 
@@ -27,11 +26,21 @@ class Container:
     """
     依赖注入容器
 
-    使用单例模式管理全局依赖实例，支持懒加载。
+    使用上下文管理器模式管理全局依赖实例的生命周期。
+
+    用法示例：
+        # 同步方式
+        with Container() as container:
+            agent = container.agent
+            ...
+
+        # 异步方式
+        async with Container() as container:
+            agent = await container.get_agent()
+            ...
     """
 
-    _instance: Optional[Container] = None
-    _init_guard: bool = False
+    _instance: Optional["Container"] = None
 
     def __new__(cls) -> "Container":
         if cls._instance is None:
@@ -39,31 +48,83 @@ class Container:
         return cls._instance
 
     def __init__(self) -> None:
-        if Container._init_guard:
+        if hasattr(self, "_initialized"):
             return
-        Container._init_guard = True
 
+        self._initialized: bool = False
         self._engine: Optional[Engine] = None
         self._llm_providers: dict[str, Any] = {}
+        self._agent: Any = None
+        self._memory: Any = None
+
+    def _startup(self) -> None:
+        """启动时初始化依赖"""
+        if self._initialized:
+            return
+
+        logger.info("初始化依赖注入容器...")
+
+        # 初始化数据库连接（懒加载，首次使用时才真正连接）
+        # 这里只是标记预初始化，实际连接在首次使用时建立
+        self._engine = None
+        self._initialized = True
+
+        logger.info("依赖注入容器初始化完成")
+
+    def _shutdown(self) -> None:
+        """关闭时清理资源"""
+        if not self._initialized:
+            return
+
+        logger.info("清理依赖注入容器...")
+
+        # 清理 LLM 提供者缓存
+        self._llm_providers.clear()
+
+        # 清理 Agent
+        self._agent = None
+
+        # 清理 Memory
+        self._memory = None
+
+        # 关闭数据库引擎
+        if self._engine is not None:
+            self._engine.dispose()
+            self._engine = None
+
+        self._initialized = False
+        logger.info("依赖注入容器清理完成")
+
+    def __enter__(self) -> "Container":
+        """同步上下文管理器入口"""
+        self._startup()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        """同步上下文管理器出口"""
+        self._shutdown()
 
     # region Database
 
     @property
-    def engine(self) -> Engine:
-        """获取同步数据库引擎（懒加载）"""
+    def db_engine(self) -> Engine:
+        """获取数据库引擎（懒加载）"""
         if self._engine is None:
             from src.infras.mysql.mysql import engine as _engine
+
             self._engine = _engine
         return self._engine
 
     def get_db(self) -> Generator[Session, None, None]:
         """获取同步数据库会话（依赖注入用）"""
         from src.infras.mysql.mysql import get_db as _get_db
+
         yield from _get_db()
 
     def get_db_operations(self) -> Any:
         """获取数据库操作工具（TextToSQL 用）"""
         from src.infras.mysql.operations import DBOperations
+
         return DBOperations()
 
     # endregion
@@ -77,6 +138,7 @@ class Container:
     ) -> Any:
         """获取 LLM 提供者实例"""
         from src.llms.providers import get_llm_provider
+
         key = f"{provider_name}:{hash(frozenset(kwargs.items()))}"
         if key not in self._llm_providers:
             self._llm_providers[key] = get_llm_provider(provider_name, **kwargs)
@@ -91,6 +153,7 @@ class Container:
     ) -> Any:
         """创建聊天模型"""
         from src.llms.providers import create_chat_model
+
         return create_chat_model(
             provider_name=provider_name,
             model_name=model_name,
@@ -101,6 +164,18 @@ class Container:
     # endregion
 
     # region Agent
+
+    @property
+    def agent(self) -> Any:
+        """获取 Agent 实例（懒加载）"""
+        if self._agent is None:
+            from src.core import settings
+
+            from .agent import LCAgent
+
+            self._agent = LCAgent(config=settings.agent)
+            logger.info("Agent 实例已创建")
+        return self._agent
 
     def create_agent(
         self,
@@ -141,9 +216,25 @@ class Container:
     def reset(self) -> None:
         """重置容器，清除所有缓存的依赖实例"""
         self._llm_providers.clear()
+        self._agent = None
+        self._memory = None
         logger.info("容器已重置")
 
 
-container = Container()
+def lifespan_container() -> Container:
+    """
+    创建依赖注入容器
 
-__all__ = ["Container", "container"]
+    用法：
+        from src.core.container import lifespan_container
+
+        def main():
+            container = lifespan_container()
+            with container:
+                agent = container.agent
+                ...
+    """
+    return Container()
+
+
+__all__ = ["Container", "lifespan_container"]

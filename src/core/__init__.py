@@ -6,13 +6,13 @@
 """
 
 from .config import settings
-from .container import container
+from .container import lifespan_container
 from .exceptions import XLangChainError
 from .logger import logger
 
 __all__ = [
     "settings",
     "logger",
-    "container",
+    "lifespan_container",
     "XLangChainError",
 ]

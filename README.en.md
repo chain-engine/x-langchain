@@ -234,79 +234,71 @@ graph TB
 
 ### Core Business Flow (ReAct Loop)
 
-```
-┌────────────────────────────────────────────────────────────────────┐
-│  1. Context Loading (Memory)                                       │
-│     ┌──────────────────────────────────────────────────────────┐   │
-│     │ User Input → History → Context Concatenation → LLM      │   │
-│     └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
-│  2. Reasoning (Think)                                            │
-│     ┌──────────────────────────────────────────────────────────┐   │
-│     │ LLM Thinks → Decide if Tool Needed → Analyze Task       │   │
-│     └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
-│  3. Action (Act)                                                │
-│     ┌─────────────────────┬────────────────────────────────┐     │
-│     │  No Tool Needed     │  Tool Needed                    │     │
-│     │  Direct Response    │  Execute Tool Call              │     │
-│     └─────────────────────┴────────────────────────────────┘     │
-│                              │                                    │
-│                              ▼                                    │
-│  4. Observation (Observe)                                        │
-│     ┌──────────────────────────────────────────────────────────┐   │
-│     │ Tool Result → Feedback to LLM → Decide Continue/End     │   │
-│     └──────────────────────────────────────────────────────────┘   │
-│                              │                                    │
-│                              ▼                                    │
-│  5. Loop or Output                                              │
-│     ┌──────────────────────────────────────────────────────────┐   │
-│     │ Continue Reasoning → Repeat Steps 2-4 → Or Output Answer │   │
-│     └──────────────────────────────────────────────────────────┘   │
-└────────────────────────────────────────────────────────────────────┘
-
-Technology: Based on LangGraph for state machine management, supporting multi-round ReAct loops
-```
-
 ```mermaid
-sequenceDiagram
-    participant U as User
-    participant CLI as CLI
-    participant MM as Memory
-    participant G as LangGraph
-    participant L as LLM
-    participant T as Tools
-    participant DB as MySQL
-
-    U->>CLI: User Input
-    CLI->>MM: Load History
-    MM-->>CLI: Return History
-    CLI->>G: Create State
-    G->>L: Think: Reasoning
-    L-->>G: Return Result
-    alt No Tool Needed
-        G-->>CLI: Direct Response
-        CLI-->>U: Return Answer
-    else Tool Needed
-        G->>T: Act: Execute Tool
-        T->>DB: Query/Write Data
-        DB-->>T: Return Result
-        T-->>G: Observe: Return Result
-        G->>MM: Update Memory
-        G->>L: Continue Reasoning
-        loop ReAct Loop
-            L-->>G: Think
-            alt Continue Calling Tools
-                G->>T: Act
-                T-->>G: Observe
-            end
-        end
-        G-->>CLI: Output Final Answer
-        CLI-->>U: Return Answer
+flowchart TD
+    subgraph Entry
+        U[User Input]
+        CLI[CLI]
     end
+
+    subgraph Execution Loop
+        subgraph Loop Head
+            MM[Load History]
+            M1[Concatenate Context]
+        end
+
+        M2[Think]
+        M3{Need Tool?}
+
+        subgraph Branch
+            M4[Direct Response]
+            M5[Execute Tool]
+        end
+
+        M6[Observe]
+        M7{Continue Loop?}
+
+        subgraph Tool Execution
+            T[Tools Layer]
+            DB[(MySQL)]
+            T --> DB
+        end
+    end
+
+    M8[Output Final Answer]
+
+    U --> CLI
+    CLI --> MM
+    MM --> M1
+    M1 --> M2
+    M2 --> M3
+
+    M3 -->|No| M4
+    M4 --> M8
+
+    M3 -->|Yes| M5
+    M5 --> T
+    T --> M6
+    M6 --> M7
+
+    M7 -->|Yes| M2
+    M7 -->|No| M8
+
+    M8 --> CLI
+    CLI --> U
+
+    style M2 fill:#e1f5fe
+    style M5 fill:#fff3e0
+    style M6 fill:#e8f5e9
+    style M8 fill:#f3e5f5
 ```
+
+> **Technology**: Based on LangGraph for state machine management, supporting multi-round ReAct loops
+
+> **Notes**:
+> - Think: LLM reasoning - decide if tool is needed
+> - Act: Execute tool calls (e.g., TextToSQL query)
+> - Observe: Get tool result, feedback to LLM for continued reasoning
 
 ### Module Dependencies
 

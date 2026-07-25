@@ -5,8 +5,6 @@ MySQL 数据库模块
 提供 SQLAlchemy 数据库连接和会话管理。
 """
 
-from core.container import container
-
 from .models import Base, Conversation, Message
 from .mysql import (
     AsyncSessionLocal,
@@ -25,8 +23,6 @@ from .operations import (
 )
 
 __all__ = [
-    # 容器快捷访问
-    "container",
     # 会话管理
     "get_db",
     "get_async_db",
