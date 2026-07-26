@@ -1,8 +1,10 @@
 from datetime import datetime, date, timedelta
 from typing import List, Type
 
-from langchain_core.tools import BaseTool, tool
+from langchain_core.tools import tool
 from pydantic import BaseModel, Field
+
+from tools.base import BaseXTool
 
 WEEKDAYS: List[str] = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"]
 
@@ -86,11 +88,12 @@ def search_calendar(datetime: str) -> str:
 
 
 # 向后兼容：保留 CalendarTool 类
-class CalendarTool(BaseTool):
+class CalendarTool(BaseXTool):
     """日历查询工具 (兼容旧代码)"""
     name: str = "search_calendar"
     description: str = "查询指定日期的事件或信息"
-    args_schema: Type[BaseModel] = CalendarInput
+    args_schema: type[BaseModel] = CalendarInput
+    retry_count: int = 1
 
     def _run(self, datetime: str) -> str:
         """执行查询日历事件的操作"""

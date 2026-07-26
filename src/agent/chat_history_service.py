@@ -234,6 +234,69 @@ class ChatHistoryService:
         logger.info(f"清空会话 {session_id}，删除 {count} 条消息")
         return count > 0 or self.get_conversation(session_id) is not None
 
+    def search_messages(self, session_id: str, keyword: str, limit: int = 20) -> list["Message"]:
+        """
+        在指定会话中搜索包含关键词的消息。
+
+        Args:
+            session_id: 会话 ID
+            keyword: 搜索关键词
+            limit: 返回数量上限
+
+        Returns:
+            匹配的消息列表
+        """
+        from infras.mysql.models import Message
+
+        return (
+            self._db.query(Message)
+            .filter(Message.conversation_id == session_id)
+            .filter(Message.content.ilike(f"%{keyword}%"))
+            .order_by(Message.created_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+    def get_session_summary(self, session_id: str) -> dict:
+        """
+        获取会话摘要统计信息。
+
+        Args:
+            session_id: 会话 ID
+
+        Returns:
+            包含消息数、最后更新时间等统计信息
+        """
+        from infras.mysql.models import Conversation, Message
+
+        conv = self._db.query(Conversation).filter(Conversation.id == session_id).first()
+        if conv is None:
+            return {}
+
+        msg_count = (
+            self._db.query(Message)
+            .filter(Message.conversation_id == session_id)
+            .count()
+        )
+        user_count = (
+            self._db.query(Message)
+            .filter(Message.conversation_id == session_id, Message.role == "user")
+            .count()
+        )
+        assistant_count = msg_count - user_count
+
+        return {
+            "session_id": session_id,
+            "title": conv.title,
+            "model_provider": conv.model_provider,
+            "total_messages": msg_count,
+            "user_messages": user_count,
+            "assistant_messages": assistant_count,
+            "created_at": conv.created_at.isoformat() if conv.created_at else None,
+            "updated_at": conv.updated_at.isoformat() if conv.updated_at else None,
+            "summary": conv.summary,
+        }
+
 
 def create_chat_history_service(db: Optional[Session] = None) -> ChatHistoryService:
     """

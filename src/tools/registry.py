@@ -463,7 +463,7 @@ def discover_tools(
         tools_dir = current_file.parent
 
     # 需要跳过的文件和目录
-    skip_files = {"__init__.py", "__pycache__", "registry.py"}
+    skip_files = {"__init__.py", "__pycache__", "registry.py", "base.py"}
 
     count = 0
 

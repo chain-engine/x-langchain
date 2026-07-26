@@ -8,6 +8,8 @@
 from typing import Dict, Any, List
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+
+from tools.base import BaseXTool
 from core.logger import logger
 
 
@@ -19,7 +21,7 @@ class ExecuteSQLArgs(BaseModel):
     sql: str = Field(..., description="要执行的SQL查询语句")
 
 
-class ExecuteSQLTool(BaseTool):
+class ExecuteSQLTool(BaseXTool):
     """
     执行SQL查询工具
     """
@@ -27,6 +29,7 @@ class ExecuteSQLTool(BaseTool):
     name: str = "execute_sql"
     description: str = "执行SQL查询语句并返回结果"
     args_schema: type[ExecuteSQLArgs] = ExecuteSQLArgs
+    retry_count: int = 1
 
     def _run(self, sql: str) -> Dict[str, Any]:
         """

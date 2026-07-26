@@ -95,8 +95,42 @@ class ConversationMemory:
 
         messages = self._chat_history.messages
         if len(messages) > self._max_messages:
-            # 保留最后 N 条消息
             self._chat_history.messages = messages[-self._max_messages:]
+
+    def search(self, keyword: str) -> List[BaseMessage]:
+        """
+        搜索包含关键词的消息。
+
+        Args:
+            keyword: 搜索关键词
+
+        Returns:
+            匹配的消息列表
+        """
+        return [
+            msg for msg in self._chat_history.messages
+            if keyword.lower() in msg.content.lower()
+        ]
+
+    def get_context_string(self, max_messages: int | None = None) -> str:
+        """
+        获取格式化的上下文字符串。
+
+        Args:
+            max_messages: 最大消息数，None 表示全部
+
+        Returns:
+            格式化字符串，如 "user: xxx\nai: xxx\n..."
+        """
+        messages = self._chat_history.messages
+        if max_messages is not None and len(messages) > max_messages:
+            messages = messages[-max_messages:]
+
+        parts = []
+        for msg in messages:
+            role = "user" if isinstance(msg, HumanMessage) else "ai"
+            parts.append(f"{role}: {msg.content}")
+        return "\n".join(parts)
 
     def load_memory_variables(self, inputs: dict) -> dict:
         """加载记忆变量（供 Chain 使用）"""

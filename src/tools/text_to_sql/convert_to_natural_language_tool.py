@@ -9,6 +9,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from tools.base import BaseXTool
 from core.config import settings
 from core.logger import logger
 
@@ -23,10 +24,11 @@ class ConvertToNaturalLanguageArgs(BaseModel):
     )
 
 
-class ConvertToNaturalLanguageTool(BaseTool):
+class ConvertToNaturalLanguageTool(BaseXTool):
     name: str = "convert_to_natural_language"
     description: str = "将 SQL 查询结果转换为简洁的自然语言回答"
     args_schema: type[ConvertToNaturalLanguageArgs] = ConvertToNaturalLanguageArgs
+    retry_count: int = 1
 
     def _run(
         self,

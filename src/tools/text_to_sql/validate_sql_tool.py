@@ -8,6 +8,8 @@
 from typing import Dict, Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
+
+from tools.base import BaseXTool
 from core.logger import logger
 
 
@@ -19,7 +21,7 @@ class ValidateSQLArgs(BaseModel):
     sql: str = Field(..., description="要验证的SQL查询语句")
 
 
-class ValidateSQLTool(BaseTool):
+class ValidateSQLTool(BaseXTool):
     """
     验证SQL语法工具
     """
@@ -27,6 +29,7 @@ class ValidateSQLTool(BaseTool):
     name: str = "validate_sql"
     description: str = "验证SQL语句的语法是否正确"
     args_schema: type[ValidateSQLArgs] = ValidateSQLArgs
+    retry_count: int = 1
 
     def _run(self, sql: str) -> Dict[str, Any]:
         """

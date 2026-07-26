@@ -9,6 +9,8 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from tools.base import BaseXTool
+
 from core.config import settings
 from core.logger import logger
 
@@ -18,10 +20,11 @@ class QuestionRewriteArgs(BaseModel):
     context: str = Field(default="", description="可选的对话上下文")
 
 
-class QuestionRewriteTool(BaseTool):
+class QuestionRewriteTool(BaseXTool):
     name: str = "question_rewrite"
     description: str = "改写用户问题，并提取 TextToSQL 查询线索"
     args_schema: type[QuestionRewriteArgs] = QuestionRewriteArgs
+    retry_count: int = 1
 
     def _run(self, question: str, context: str = "") -> dict[str, Any]:
         try:

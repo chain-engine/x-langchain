@@ -12,6 +12,7 @@ from typing import Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from tools.base import BaseXTool
 from core.logger import logger
 
 
@@ -29,12 +30,13 @@ class GenerateSQLArgs(BaseModel):
     )
 
 
-class GenerateSQLTool(BaseTool):
+class GenerateSQLTool(BaseXTool):
     """生成SQL工具"""
 
     name: str = "generate_sql"
     description: str = "根据用户问题和数据库结构生成SQL查询语句"
     args_schema: type[GenerateSQLArgs] = GenerateSQLArgs
+    retry_count: int = 1
 
     def _run(
         self,

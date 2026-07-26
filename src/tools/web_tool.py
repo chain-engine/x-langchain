@@ -3,15 +3,19 @@ from typing import Any, Dict, List
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
+from tools.base import BaseXTool
+
 
 class WebSearchArgs(BaseModel):
     query: str = Field(..., description="搜索查询词")
 
 
-class WebSearchTool(BaseTool):
+class WebSearchTool(BaseXTool):
+    """网络搜索工具"""
     name: str = "web_search"
     description: str = "检索互联网信息"
     args_schema: type[WebSearchArgs] = WebSearchArgs
+    retry_count: int = 1
 
     def _run(self, query: str) -> str:
         """检索互联网信息

@@ -113,6 +113,7 @@ from .weather_tool import weather_search_tool
 from .web_tool import WebSearchTool
 from .exchange_rate_tool import exchange_rate_tool
 from .calendar_tool import search_calendar, CalendarTool
+from .base import BaseXTool, ToolCallError, create_tool_schema
 
 
 def get_mcp_tools() -> List[Any]:
@@ -208,4 +209,8 @@ __all__ = [
     "exchange_rate_tool",
     "CalendarTool",
     "search_calendar",
+    # Base classes
+    "BaseXTool",
+    "ToolCallError",
+    "create_tool_schema",
 ]

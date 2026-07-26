@@ -2,7 +2,7 @@
 """
 LangChain Agent 封装
 
-基于 LangGraph 的 create_react_agent API。
+基于 LangGraph 的 create_react_agent API，提供单 Agent 智能体。
 """
 
 from dataclasses import dataclass, field
@@ -29,7 +29,7 @@ class AgentResponse:
 
 
 class LCAgent:
-    """基于 LangGraph create_react_agent 的 Agent 封装"""
+    """基于 LangGraph create_react_agent 的单 Agent 封装"""
 
     def __init__(
         self,
@@ -143,7 +143,7 @@ class LCAgent:
             logger.warning(f"保存消息失败: {e}")
 
     def invoke(self, user_input: str, **kwargs) -> AgentResponse:
-        """处理用户输入（带中间件支持和历史持久化）"""
+        """处理用户输入（ReAct 推理模式）"""
         context = {
             "user_input": user_input,
             "iteration": 0,
@@ -193,7 +193,7 @@ class LCAgent:
                 tool_results=context.get("_tool_results", []),
                 iterations=context["_iterations"],
                 metadata={
-                    "agent_type": "langgraph",
+                    "agent_type": "langgraph.react",
                     "metrics": context.get("_metrics", {}),
                 },
             )
@@ -263,6 +263,69 @@ class LCAgent:
             logger.error(f"Agent 流式处理错误: {e}")
             yield {"type": "error", "error": str(e)}
 
+    def add_tools(self, tools: Sequence[Any]) -> None:
+        """动态添加工具"""
+        self._tools = list(self._tools) + list(tools)
+        self._agent = create_react_agent(
+            model=self._llm,
+            tools=self._tools,
+            prompt=self._system_message,
+            state_schema=self._state_schema,
+        )
+        logger.info(f"添加 {len(tools)} 个工具，重新创建 Agent")
+
+    def add_memory(self, content: str, memory_type: str = "general") -> None:
+        """
+        添加记忆到会话历史。
+
+        Args:
+            content: 记忆内容
+            memory_type: 记忆类型（如 "general", "fact", "preference"）
+        """
+        if self._session_id:
+            self._save_message(self._session_id, "memory", content)
+            logger.debug(f"添加记忆 [{memory_type}]: {content[:50]}...")
+
+    def search_memory(self, query: str, top_k: int = 5) -> list:
+        """
+        搜索会话历史中的相关记忆。
+
+        Args:
+            query: 搜索关键词
+            top_k: 返回数量上限
+
+        Returns:
+            匹配的消息列表
+        """
+        svc = self._get_history_service()
+        if svc is None or self._session_id is None:
+            return []
+        return svc.search_messages(self._session_id, query, limit=top_k)
+
+    def clear_memory(self) -> bool:
+        """
+        清空当前会话的所有记忆（保留会话）。
+
+        Returns:
+            是否清空成功
+        """
+        svc = self._get_history_service()
+        if svc is None or self._session_id is None:
+            return False
+        return svc.clear_conversation(self._session_id)
+
+    def get_memory_summary(self) -> dict:
+        """
+        获取当前会话的记忆摘要。
+
+        Returns:
+            会话统计信息
+        """
+        svc = self._get_history_service()
+        if svc is None or self._session_id is None:
+            return {}
+        return svc.get_session_summary(self._session_id)
+
     def _extract_content(self, result: Any) -> str:
         if isinstance(result, dict) and "messages" in result:
             messages = result["messages"]
@@ -292,17 +355,6 @@ class LCAgent:
                 or (hasattr(m, "type") and m.type == "ai")
             )
         return 0
-
-    def add_tools(self, tools: Sequence[Any]) -> None:
-        """动态添加工具"""
-        self._tools = list(self._tools) + list(tools)
-        self._agent = create_react_agent(
-            model=self._llm,
-            tools=self._tools,
-            prompt=self._system_message,
-            state_schema=self._state_schema,
-        )
-        logger.info(f"添加 {len(tools)} 个工具，重新创建 Agent")
 
     def __repr__(self) -> str:
         return f"<LCAgent: tools={len(self._tools)}>"

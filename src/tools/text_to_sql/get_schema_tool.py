@@ -8,25 +8,22 @@
 from typing import Dict, Any
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel
+
+from tools.base import BaseXTool
 from core.logger import logger
 
 
 class GetSchemaArgs(BaseModel):
-    """
-    获取数据库结构参数
-    """
-
-    # 暂时不需要参数
+    """获取数据库结构参数"""
 
 
-class GetSchemaTool(BaseTool):
-    """
-    获取数据库结构工具
-    """
+class GetSchemaTool(BaseXTool):
+    """获取数据库结构工具"""
 
     name: str = "get_schema"
     description: str = "获取数据库的表结构信息，包括表名、字段、主键、外键等"
     args_schema: type[GetSchemaArgs] = GetSchemaArgs
+    retry_count: int = 1
 
     def _run(self) -> Dict[str, Any]:
         """

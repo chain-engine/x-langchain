@@ -2,16 +2,16 @@
 """
 Agent 模块 - 基于 LangChain 的 Agent 组件
 
-提供基于 LangGraph create_react_agent 的 LCAgent 实现。
+提供基于 LangGraph create_react_agent 的单 Agent 实现（ReAct 推理模式）。
 """
 
-from .chat_history_service import (
+from agent.chat_history_service import (
     ChatHistoryService,
     chat_history_context,
     create_chat_history_service,
     generate_session_id,
 )
-from .lc_agent import LCAgent, AgentResponse
+from agent.lc_agent import LCAgent, AgentResponse
 
 __all__ = [
     "LCAgent",
