@@ -132,7 +132,7 @@ class LLMProvidersConfig:
     # DeepSeek
     deepseek_api_key: str = ""
     deepseek_api_base: str = "https://api.deepseek.com/v1"
-    deepseek_model_name: str = "deepseek-chat"
+    deepseek_model_name: str = "deepseek-v4-pro"
 
     # 豆包
     doubao_api_key: str = ""
@@ -212,7 +212,7 @@ class Settings:
                 "model_name": "deepseek",
                 "deepseek_api_key": "",
                 "deepseek_api_base": "https://api.deepseek.com/v1",
-                "deepseek_model_name": "deepseek-chat",
+                "deepseek_model_name": "deepseek-v4-pro",
                 "doubao_api_key": "",
                 "doubao_api_base": "https://ark.cn-beijing.volces.com/api/v3",
                 "doubao_model_name": "",

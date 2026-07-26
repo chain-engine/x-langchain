@@ -166,8 +166,8 @@ class DeepSeekProvider(BaseLLMProvider):
     DeepSeek LLM 提供者
 
     支持的模型：
-    - deepseek-chat
-    - deepseek-reasoner
+    - deepseek-v4-pro
+    - deepseek-v4-flash
     """
 
     name = "deepseek"
@@ -287,7 +287,7 @@ class MockProvider(BaseLLMProvider):
         return LLMConfig(
             api_key="mock-api-key",
             api_base="http://localhost:8000",
-            model_name="gpt-3.5-turbo",
+            model_name="deepseek-v4-pro",
             temperature=0.0,
         )
 
