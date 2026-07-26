@@ -36,7 +36,7 @@ def _search_weather_core(city: str) -> str:
         geo_url: str = "https://restapi.amap.com/v3/geocode/geo"
         geo_params: Dict[str, str] = {"key": api_key, "address": city, "output": "json"}
 
-        geo_response: requests.Response = requests.get(geo_url, params=geo_params)
+        geo_response: requests.Response = requests.get(geo_url, params=geo_params, timeout=5)
         geo_data: Dict[str, Any] = geo_response.json()
 
         if geo_data.get("status") != "1" or not geo_data.get("geocodes"):
@@ -53,7 +53,7 @@ def _search_weather_core(city: str) -> str:
             "output": "json",
         }
 
-        weather_response: requests.Response = requests.get(weather_url, params=weather_params)
+        weather_response: requests.Response = requests.get(weather_url, params=weather_params, timeout=5)
         weather_data: Dict[str, Any] = weather_response.json()
 
         if weather_data.get("status") != "1" or not weather_data.get("lives"):
@@ -73,7 +73,9 @@ def _search_weather_core(city: str) -> str:
 
     except Exception as e:
         # 捕获所有异常，确保工具不会因为错误而崩溃
-        return f"获取天气信息失败: {str(e)}"
+        from core.logger import logger
+        logger.error(f"获取天气信息失败: {e}")
+        return f"获取天气信息失败，请稍后重试"
 
 
 @tool

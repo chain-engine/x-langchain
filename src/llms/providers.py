@@ -268,6 +268,7 @@ class AliyunProvider(BaseLLMProvider):
             temperature=kwargs.get("temperature", self.config.temperature),
             max_tokens=kwargs.get("max_tokens", self.config.max_tokens),
             streaming=kwargs.get("streaming", True),
+            timeout=kwargs.get("timeout", self.config.timeout),
         )
 
 
@@ -317,6 +318,16 @@ class MockProvider(BaseLLMProvider):
             response = f"模拟响应：收到您的消息 - {content[:50]}..."
 
         return AIMessage(content=response)
+
+    def stream(self, messages: list, **kwargs):
+        """流式返回模拟响应"""
+        response = self.invoke(messages, **kwargs)
+        # 模拟流式输出，每10个字符一个chunk
+        content = response.content
+        for i in range(0, len(content), 10):
+            chunk = content[i:i+10]
+            if chunk:
+                yield {"type": "message", "content": chunk}
 
 
 _PROVIDER_REGISTRY: dict[str, Type[BaseLLMProvider]] = {

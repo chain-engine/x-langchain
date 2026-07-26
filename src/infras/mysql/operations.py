@@ -13,10 +13,11 @@ from core.config import settings
 from core.logger import logger
 
 _MUTATING_SQL_RE = re.compile(
-    r"\b(insert|update|delete|drop|alter|create|truncate|replace|merge|grant|revoke)\b",
+    r"\b(insert|update|delete|drop|alter|create|truncate|replace|merge|grant|revoke|load_file|into outfile|into dumpfile)\b",
     re.IGNORECASE,
 )
 _LIMIT_RE = re.compile(r"\blimit\b", re.IGNORECASE)
+_COMMENT_RE = re.compile(r"(--.*$|#.*$|/\*[\s\S]*?\*/)", re.MULTILINE)
 
 
 def get_db_url() -> str:
@@ -30,13 +31,25 @@ def is_safe_select_sql(sql: str) -> bool:
     if not normalized:
         return False
 
-    body = normalized[:-1].strip() if normalized.endswith(";") else normalized
+    # 移除注释后再检查，防止通过注释绕过检测
+    sql_without_comments = _COMMENT_RE.sub("", normalized)
+    body = sql_without_comments.strip()
+
+    if not body:
+        return False
+
+    # 检查多语句攻击
     if ";" in body:
         return False
+
+    # 必须以 SELECT 开头
     if not body.lower().startswith("select"):
         return False
+
+    # 检查危险操作
     if _MUTATING_SQL_RE.search(body):
         return False
+
     return True
 
 
@@ -155,3 +168,23 @@ class DBOperations:
         except SQLAlchemyError as exc:
             logger.error("SQL validation failed: %s", exc)
             return False
+
+
+# 单例实例
+_singleton_instance: "DBOperations | None" = None
+
+
+def get_db_operations() -> DBOperations:
+    """获取 DBOperations 单例实例"""
+    global _singleton_instance
+    if _singleton_instance is None:
+        _singleton_instance = DBOperations()
+    return _singleton_instance
+
+
+def reset_singleton() -> None:
+    """重置单例实例（用于测试或配置变更后）"""
+    global _singleton_instance
+    if _singleton_instance is not None:
+        _singleton_instance.engine.dispose()
+        _singleton_instance = None

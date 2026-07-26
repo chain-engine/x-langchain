@@ -47,7 +47,8 @@ class WebSearchTool(BaseTool):
             # 如果 ddgs 未安装，使用简单的模拟实现
             return f"搜索结果：{query}\n\n注意：要获取真实的网络搜索结果，请安装 ddgs 库：\n  uv add ddgs"
         except Exception as e:
-            return f"搜索时发生错误: {str(e)}"
+            logger.error(f"网络搜索失败: {e}")
+            return f"搜索时发生错误，请稍后重试"
 
 
 if __name__ == "__main__":

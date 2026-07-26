@@ -98,6 +98,8 @@ class Container:
             self._engine = None
 
         self._initialized = False
+        # 清除单例引用，允许下次创建新的实例
+        Container._instance = None
         logger.info("依赖注入容器清理完成")
 
     def __enter__(self) -> "Container":
@@ -127,10 +129,13 @@ class Container:
         yield from _get_db()
 
     def get_db_operations(self) -> Any:
-        """获取数据库操作工具（TextToSQL 用）"""
+        """获取数据库操作工具（TextToSQL 用，单例）"""
         from infras.mysql.operations import DBOperations
 
-        return DBOperations()
+        # 使用类级别的单例缓存
+        if not hasattr(DBOperations, "_singleton_instance"):
+            DBOperations._singleton_instance = DBOperations()
+        return DBOperations._singleton_instance
 
     # endregion
 

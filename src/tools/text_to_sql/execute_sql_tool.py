@@ -41,15 +41,15 @@ class ExecuteSQLTool(BaseTool):
         try:
             logger.info(f"执行SQL查询: {sql}")
 
-            # 延迟导入，避免循环依赖
-            from infras.mysql import DBOperations
+            # 使用单例 DBOperations，避免重复创建连接
+            from infras.mysql.operations import get_db_operations
 
-            db_ops: DBOperations = DBOperations()
+            db_ops = get_db_operations()
             results: List[Dict[str, Any]] = db_ops.execute_sql(sql)
 
             logger.info(f"SQL查询执行成功，返回 {len(results)} 条记录")
 
             return {"sql": sql, "results": results, "success": True}
         except Exception as e:
-            logger.error(f"执行SQL失败: {str(e)}")
-            return {"sql": sql, "error": str(e), "success": False}
+            logger.error(f"执行SQL失败: {e}")
+            return {"sql": sql, "error": "SQL执行失败，请稍后重试", "success": False}

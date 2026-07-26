@@ -46,6 +46,12 @@ class BaseEnum(Enum):
             return str(self._mark) == other
         return NotImplemented
 
+    def __ne__(self, other: object) -> bool:
+        result = self.__eq__(other)
+        if result is NotImplemented:
+            return NotImplemented
+        return not result
+
     def __hash__(self) -> int:
         return hash(self._mark)
 

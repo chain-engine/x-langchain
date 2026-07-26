@@ -164,12 +164,20 @@ class QiuChiMCPClient:
         import asyncio
 
         try:
-            loop = asyncio.get_event_loop()
+            # 检查是否已有运行中的 event loop
+            loop = asyncio.get_running_loop()
         except RuntimeError:
+            # 没有运行中的 loop，创建新的
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
+            self._cached_tools = loop.run_until_complete(self._fetch_tools_async())
+            loop.close()
+            return self._cached_tools
 
-        self._cached_tools = loop.run_until_complete(self._fetch_tools_async())
+        # 已有运行中的 loop，使用 run_coroutine_threadsafe
+        import concurrent.futures
+        future = asyncio.run_coroutine_threadsafe(self._fetch_tools_async(), loop)
+        self._cached_tools = future.result(timeout=30)
         return self._cached_tools
 
     async def get_all_tools_async(self) -> List[Any]:

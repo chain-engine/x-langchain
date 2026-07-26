@@ -12,6 +12,8 @@ import warnings
 import os
 from typing import Any, List
 
+from core.logger import logger
+
 # =============================================================================
 # 导入注册表和装饰器
 # =============================================================================
@@ -64,7 +66,7 @@ def register_mcp_tools() -> int:
         qiuchi_tools = get_qiuchi_tools()
         if qiuchi_tools:
             tool_names = [getattr(t, "name", str(t)) for t in qiuchi_tools]
-            print(f"[秋池工具] 获取到 {len(qiuchi_tools)} 个工具: {tool_names}")
+            logger.info(f"[秋池工具] 获取到 {len(qiuchi_tools)} 个工具: {tool_names}")
         for tool in qiuchi_tools:
             tool_name = getattr(tool, "name", str(tool))
             if not ToolRegistry.contains(tool_name):
@@ -92,7 +94,7 @@ async def register_mcp_tools_async() -> int:
         qiuchi_tools = await get_qiuchi_tools_async()
         if qiuchi_tools:
             tool_names = [getattr(t, "name", str(t)) for t in qiuchi_tools]
-            print(f"[秋池工具] 获取到 {len(qiuchi_tools)} 个工具: {tool_names}")
+            logger.info(f"[秋池工具] 获取到 {len(qiuchi_tools)} 个工具: {tool_names}")
         for tool in qiuchi_tools:
             tool_name = getattr(tool, "name", str(tool))
             if not ToolRegistry.contains(tool_name):
@@ -108,7 +110,7 @@ async def register_mcp_tools_async() -> int:
 # 导出常用工具（简化导入）
 # =============================================================================
 from .weather_tool import weather_search_tool
-from .web_tool import WebSearchTool, WebSearchTool as web_search_tool
+from .web_tool import WebSearchTool
 from .exchange_rate_tool import exchange_rate_tool
 from .calendar_tool import search_calendar, CalendarTool
 
@@ -202,7 +204,6 @@ __all__ = [
     "get_all_tools_async",
     # 常用工具
     "weather_search_tool",
-    "web_search_tool",
     "WebSearchTool",
     "exchange_rate_tool",
     "CalendarTool",

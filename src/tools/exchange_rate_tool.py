@@ -47,9 +47,11 @@ def _fetch_exchange_rate(from_currency: str, to_currency: str) -> str:
             f"(数据日期：{date or '未知'})"
         )
     except requests.RequestException as exc:
-        return f"获取汇率信息失败（网络错误）：{exc}"
+        logger.error(f"获取汇率信息失败（网络错误）: {exc}")
+        return f"获取汇率信息失败（网络错误），请稍后重试"
     except Exception as exc:  # noqa: BLE001
-        return f"获取汇率信息失败：{exc}"
+        logger.error(f"获取汇率信息失败: {exc}")
+        return f"获取汇率信息失败，请稍后重试"
 
 
 @tool

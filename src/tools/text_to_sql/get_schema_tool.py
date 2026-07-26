@@ -38,15 +38,15 @@ class GetSchemaTool(BaseTool):
         try:
             logger.info("获取数据库结构")
 
-            # 延迟导入，避免循环依赖
-            from infras.mysql import DBOperations
+            # 使用单例 DBOperations，避免重复创建连接
+            from infras.mysql.operations import get_db_operations
 
-            db_ops: DBOperations = DBOperations()
+            db_ops = get_db_operations()
             schema_info: Dict[str, Any] = db_ops.get_schema_info()
 
             logger.info(f"成功获取数据库结构，包含 {len(schema_info)} 个表")
 
             return {"schema_info": schema_info, "success": True}
         except Exception as e:
-            logger.error(f"获取数据库结构失败: {str(e)}")
-            return {"error": str(e), "success": False}
+            logger.error(f"获取数据库结构失败: {e}")
+            return {"error": "获取数据库结构失败，请稍后重试", "success": False}

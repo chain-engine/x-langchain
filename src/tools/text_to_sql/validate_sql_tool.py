@@ -41,10 +41,10 @@ class ValidateSQLTool(BaseTool):
         try:
             logger.info(f"验证SQL语法: {sql}")
 
-            # 延迟导入，避免循环依赖
-            from infras.mysql import DBOperations
+            # 使用单例 DBOperations，避免重复创建连接
+            from infras.mysql.operations import get_db_operations
 
-            db_ops: DBOperations = DBOperations()
+            db_ops = get_db_operations()
             is_valid: bool = db_ops.validate_sql(sql)
 
             if is_valid:
@@ -54,5 +54,5 @@ class ValidateSQLTool(BaseTool):
                 logger.warning("SQL语法验证失败")
                 return {"sql": sql, "is_valid": False, "message": "SQL语法验证失败"}
         except Exception as e:
-            logger.error(f"验证SQL失败: {str(e)}")
-            return {"sql": sql, "is_valid": False, "message": f"验证失败: {str(e)}"}
+            logger.error(f"验证SQL失败: {e}")
+            return {"sql": sql, "is_valid": False, "message": "SQL验证失败，请稍后重试"}
