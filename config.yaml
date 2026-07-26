@@ -17,9 +17,6 @@ agent:
   enable_memory: true
   enable_planning: false
   enable_tools: true
-  enable_memory_persistence: false  # 是否启用记忆持久化（跨会话）
-  session_id: null  # 会话ID（启用持久化时必填）
-  memory_store_path: null  # SQLite 数据库路径，null 则使用默认路径
   mode: react
   debug: false
 

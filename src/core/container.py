@@ -193,6 +193,9 @@ class Container:
         model_name: Optional[str] = None,
         tools: Optional[list] = None,
         system_message: Optional[str] = None,
+        middleware_chain: Optional[Any] = None,
+        session_id: Optional[str] = None,
+        auto_persist: bool = True,
         **config_kwargs,
     ) -> Any:
         """
@@ -203,12 +206,16 @@ class Container:
             model_name: 模型名称
             tools: 工具列表
             system_message: 系统消息
+            middleware_chain: 中间件链，默认使用 DEFAULT_MIDDLEWARE_CHAIN
+            session_id: 会话 ID，用于持久化
+            auto_persist: 是否自动持久化（需配合 session_id 使用）
             **config_kwargs: 其他配置
 
         Returns:
             LCAgent 实例
         """
         from agent.lc_agent import LCAgent
+        from core.middleware import DEFAULT_MIDDLEWARE_CHAIN
 
         llm = self.create_chat_model(
             provider_name=model_provider,
@@ -219,6 +226,9 @@ class Container:
             llm=llm,
             tools=tools,
             system_message=system_message,
+            middleware_chain=middleware_chain or DEFAULT_MIDDLEWARE_CHAIN,
+            session_id=session_id,
+            auto_persist=auto_persist,
         )
 
     # endregion

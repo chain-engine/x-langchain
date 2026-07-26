@@ -12,7 +12,9 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
 from langgraph.prebuilt import create_react_agent
 
+from agent.chat_history_service import ChatHistoryService, create_chat_history_service
 from core.logger import logger
+from core.middleware import DEFAULT_MIDDLEWARE_CHAIN, MiddlewareChain
 from llms import create_chat_model
 
 
@@ -36,6 +38,10 @@ class LCAgent:
         tools: Optional[Sequence[Any]] = None,
         system_message: Optional[str] = None,
         state_schema: Optional[type] = None,
+        middleware_chain: Optional[MiddlewareChain] = None,
+        session_id: Optional[str] = None,
+        chat_history_service: Optional[ChatHistoryService] = None,
+        auto_persist: bool = True,
     ):
         if llm is None:
             from core.config import AgentConfig
@@ -52,6 +58,10 @@ class LCAgent:
         self._tools: Sequence[Any] = tools if tools is not None else self._get_default_tools()
         self._system_message = system_message or "你是一个智能助手，可以帮助用户完成各种任务。当需要外部信息时，使用工具来获取。不要编造信息。"
         self._state_schema = state_schema
+        self._middleware: MiddlewareChain = middleware_chain or DEFAULT_MIDDLEWARE_CHAIN
+        self._session_id: Optional[str] = session_id
+        self._chat_history_service: Optional[ChatHistoryService] = chat_history_service
+        self._auto_persist: bool = auto_persist
 
         self._agent: Runnable = create_react_agent(
             model=self._llm,
@@ -60,7 +70,11 @@ class LCAgent:
             state_schema=self._state_schema,
         )
 
-        logger.info(f"初始化 LCAgent, tools={len(self._tools)}")
+        logger.info(
+            f"初始化 LCAgent, tools={len(self._tools)}, "
+            f"session_id={self._session_id}, auto_persist={self._auto_persist}, "
+            f"middleware={self._middleware.middlewares}"
+        )
 
     @staticmethod
     def _get_default_tools() -> Sequence[Any]:
@@ -75,26 +89,113 @@ class LCAgent:
     def tools(self) -> Sequence[Any]:
         return self._tools
 
-    def invoke(self, user_input: str, **kwargs) -> AgentResponse:
-        """处理用户输入"""
-        tool_results: List[dict] = []
-        iterations = 0
+    @property
+    def session_id(self) -> Optional[str]:
+        return self._session_id
 
+    def _get_history_service(self) -> Optional[ChatHistoryService]:
+        """获取历史服务实例（延迟创建）。"""
+        if self._chat_history_service is not None:
+            return self._chat_history_service
+        if self._session_id is None:
+            return None
         try:
+            self._chat_history_service = create_chat_history_service()
+            return self._chat_history_service
+        except Exception as e:
+            logger.warning(f"无法创建 ChatHistoryService: {e}")
+            return None
+
+    def _load_history(self, session_id: str) -> list:
+        """加载历史消息并转换为 LangChain 格式。"""
+        svc = self._get_history_service()
+        if svc is None:
+            return []
+        messages = svc.get_messages(session_id)
+        from langchain_core.messages import AIMessage, HumanMessage
+        result = []
+        for msg in messages:
+            if msg.role == "user":
+                result.append(("user", msg.content))
+            else:
+                result.append(("ai", msg.content))
+        logger.debug(f"加载 {len(result)} 条历史消息到会话 {session_id}")
+        return result
+
+    def _save_message(self, session_id: str, role: str, content: str) -> None:
+        """保存单条消息到 MySQL。"""
+        svc = self._get_history_service()
+        if svc is None:
+            return
+        try:
+            model_provider = (
+                self._llm.__class__.__name__
+                if hasattr(self._llm, "__class__")
+                else "unknown"
+            )
+            svc.add_message(
+                session_id=session_id,
+                role=role,
+                content=content,
+                model_provider=model_provider,
+            )
+        except Exception as e:
+            logger.warning(f"保存消息失败: {e}")
+
+    def invoke(self, user_input: str, **kwargs) -> AgentResponse:
+        """处理用户输入（带中间件支持和历史持久化）"""
+        context = {
+            "user_input": user_input,
+            "iteration": 0,
+            "_metrics": {},
+            "_tool_call_log": [],
+        }
+
+        def _execute(ctx: dict) -> Any:
+            session_id = self._session_id or kwargs.get("session_id")
+            history = []
+
+            if self._auto_persist and session_id:
+                history = self._load_history(session_id)
+                if history:
+                    ctx["_history"] = history
+
+            messages = [("user", ctx["user_input"])]
+            if history:
+                messages = history + messages
+
             result = self._agent.invoke(
-                {"messages": [("user", user_input)]},
+                {"messages": messages},
                 config=kwargs.get("config", {}),
             )
+            ctx["_last_result"] = result
+            ctx["_iterations"] = self._count_ai_messages(result)
+            ctx["_content"] = self._extract_content(result)
 
-            content = self._extract_content(result)
-            iterations = self._count_ai_messages(result)
+            tool_results = self._extract_tool_results(result)
+            ctx["_tool_results"] = tool_results
+            return result
+
+        wrapped_execute = self._middleware.wrap(_execute)
+
+        try:
+            wrapped_execute(context)
+            result = context["_last_result"]
+            content = context["_content"]
+
+            if self._auto_persist and self._session_id:
+                self._save_message(self._session_id, "user", user_input)
+                self._save_message(self._session_id, "assistant", content)
 
             return AgentResponse(
                 content=content,
                 success=True,
-                tool_results=tool_results,
-                iterations=iterations,
-                metadata={"agent_type": "langgraph"},
+                tool_results=context.get("_tool_results", []),
+                iterations=context["_iterations"],
+                metadata={
+                    "agent_type": "langgraph",
+                    "metrics": context.get("_metrics", {}),
+                },
             )
 
         except Exception as e:
@@ -106,23 +207,59 @@ class LCAgent:
             )
 
     def stream(self, user_input: str, **kwargs) -> Generator:
-        """流式处理用户输入"""
+        """流式处理用户输入（带中间件支持和历史持久化）"""
+        session_id = self._session_id or kwargs.get("session_id")
+        history = []
+
+        if self._auto_persist and session_id:
+            history = self._load_history(session_id)
+
+        messages = [("user", user_input)]
+        if history:
+            messages = history + messages
+
+        context = {
+            "user_input": user_input,
+            "iteration": 0,
+            "_metrics": {},
+            "_tool_call_log": [],
+        }
+
+        context = self._middleware.before_invoke(context)
+
+        full_response = ""
         try:
             for event in self._agent.stream(
-                {"messages": [("user", user_input)]},
+                {"messages": messages},
                 config=kwargs.get("config", {}),
             ):
                 if isinstance(event, dict):
-                    for node_output in event.values():
+                    for node_name, node_output in event.items():
                         if isinstance(node_output, dict) and "messages" in node_output:
                             for msg in node_output["messages"]:
                                 if hasattr(msg, "content") and msg.content:
+                                    full_response += msg.content
                                     yield {"type": "message", "content": msg.content}
                                 if hasattr(msg, "name") and msg.name:
+                                    tool_context = {
+                                        **context,
+                                        "tool_name": msg.name,
+                                        "tool_args": getattr(msg, "tool_call_id", {}),
+                                    }
+                                    self._middleware.before_invoke(tool_context)
                                     yield {"type": "tool", "name": msg.name}
                 elif hasattr(event, "content"):
+                    full_response += event.content
                     yield {"type": "message", "content": event.content}
+
+            self._middleware.after_invoke(context, None)
+
+            if self._auto_persist and session_id:
+                self._save_message(session_id, "user", user_input)
+                self._save_message(session_id, "assistant", full_response)
+
         except Exception as e:
+            self._middleware.on_error(context, e)
             logger.error(f"Agent 流式处理错误: {e}")
             yield {"type": "error", "error": str(e)}
 
@@ -134,6 +271,18 @@ class LCAgent:
                 if hasattr(last, "content"):
                     return last.content
         return str(result)
+
+    def _extract_tool_results(self, result: Any) -> List[dict]:
+        """从 LangGraph result 中提取工具调用结果"""
+        tool_results = []
+        if isinstance(result, dict) and "messages" in result:
+            for msg in result["messages"]:
+                if hasattr(msg, "type") and msg.type == "tool":
+                    tool_results.append({
+                        "name": getattr(msg, "name", "unknown"),
+                        "content": getattr(msg, "content", ""),
+                    })
+        return tool_results
 
     def _count_ai_messages(self, result: Any) -> int:
         if isinstance(result, dict) and "messages" in result:

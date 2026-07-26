@@ -59,10 +59,6 @@ class AgentConfig:
     enable_tools: bool = True
     mode: AgentMode | str = AgentMode.REACT
     debug: bool = False
-    # 持久化配置
-    enable_memory_persistence: bool = False  # 是否启用记忆持久化
-    session_id: str | None = None  # 会话 ID（启用持久化时必填）
-    memory_store_path: str | None = None  # SQLite 数据库路径
 
 
 # =============================================================================
@@ -260,9 +256,6 @@ class Settings:
             "AGENT_TIMEOUT": ("agent", "timeout", int),
             "AGENT_DEBUG": ("agent", "debug", lambda v: v.lower() == "true"),
             "AGENT_ENABLE_PLANNING": ("agent", "enable_planning", lambda v: v.lower() == "true"),
-            "AGENT_ENABLE_MEMORY_PERSISTENCE": ("agent", "enable_memory_persistence", lambda v: v.lower() == "true"),
-            "AGENT_SESSION_ID": ("agent", "session_id", str),
-            "AGENT_MEMORY_STORE_PATH": ("agent", "memory_store_path", str),
             # Database
             "DB_URL": ("database", "db_url", str),
             "DB_HOST": ("database", "db_host", str),
