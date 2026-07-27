@@ -190,9 +190,9 @@ graph TB
     DYP --> REACT
     REACT --> LLM
 
-    style Agent fill:#4A90D9,color:#fff
-    style Prompts fill:#E67E22,color:#fff
-    style LangChain fill:#27AE60,color:#fff
+    style Agent fill:#FFF9C4,color:#000
+    style Prompts fill:#FFF59D,color:#000
+    style LangChain fill:#FFF176,color:#000
 ```
 
 ### 组件职责
