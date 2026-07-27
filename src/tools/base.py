@@ -35,6 +35,11 @@ class BaseXTool(BaseTool):
     - 提供 to_langchain_format() 导出 LangChain 兼容格式
     - 支持 retry_on_error 错误重试
     - 支持 usage tracking 使用统计
+
+    子类必须：
+    1. 定义 name 类属性（str）
+    2. 定义 description 类属性（str）
+    3. 实现 _run 方法
     """
 
     # 覆盖此属性以自定义参数 JSON Schema

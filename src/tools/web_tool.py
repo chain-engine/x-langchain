@@ -12,6 +12,7 @@ class WebSearchArgs(BaseModel):
 
 class WebSearchTool(BaseXTool):
     """网络搜索工具"""
+
     name: str = "web_search"
     description: str = "检索互联网信息"
     args_schema: type[WebSearchArgs] = WebSearchArgs

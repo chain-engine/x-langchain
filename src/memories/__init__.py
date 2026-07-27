@@ -12,6 +12,7 @@ from .memory import (
     ChatMessageHistory,
     ConversationMemory,
     BufferMemory,
+    ConversationSummaryMemory,
     create_conversation_memory,
     create_buffer_memory,
 )
@@ -20,6 +21,7 @@ __all__ = [
     "ChatMessageHistory",
     "ConversationMemory",
     "BufferMemory",
+    "ConversationSummaryMemory",
     "create_conversation_memory",
     "create_buffer_memory",
 ]

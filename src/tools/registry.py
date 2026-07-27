@@ -394,6 +394,9 @@ def _extract_tools_from_module(module: Any, category: str, subcategory: Optional
 
         # 类型1：BaseTool 子类
         if inspect.isclass(obj) and issubclass(obj, BaseTool) and obj != BaseTool:
+            # BaseXTool 位于 tools.base，是所有工具的抽象基类，不应被注册
+            if obj.__module__ == "tools.base":
+                continue
             # 检查是否已经注册过
             instance = obj()
             tool_name = getattr(instance, "name", name)

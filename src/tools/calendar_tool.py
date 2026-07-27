@@ -90,6 +90,7 @@ def search_calendar(datetime: str) -> str:
 # 向后兼容：保留 CalendarTool 类
 class CalendarTool(BaseXTool):
     """日历查询工具 (兼容旧代码)"""
+
     name: str = "search_calendar"
     description: str = "查询指定日期的事件或信息"
     args_schema: type[BaseModel] = CalendarInput
