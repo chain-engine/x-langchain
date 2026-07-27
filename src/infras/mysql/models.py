@@ -5,6 +5,8 @@
 定义会话和消息的 SQLAlchemy 模型。
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 from typing import List, Optional
 

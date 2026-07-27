@@ -25,7 +25,7 @@ from typing import Any, Final
 import yaml
 from dotenv import load_dotenv
 
-from constants import AgentMode
+from constants.agent import AgentMode
 
 
 # =============================================================================
@@ -336,7 +336,8 @@ class Settings:
 
     @property
     def TEMPERATURE(self) -> float:
-        return DEFAULT_TEMPERATURE
+        """返回 Agent 配置的 temperature 值"""
+        return self.agent.temperature
 
     # Database
     @property

@@ -7,6 +7,8 @@
 参考文档：https://langchain-doc.cn/v1/python/langchain/streaming.html
 """
 
+from __future__ import annotations
+
 from .base import BaseEnum
 
 

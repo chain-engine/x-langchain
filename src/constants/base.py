@@ -5,6 +5,8 @@
 提供可描述枚举类的基类封装
 """
 
+from __future__ import annotations
+
 from enum import Enum
 
 

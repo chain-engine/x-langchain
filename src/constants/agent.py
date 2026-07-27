@@ -3,6 +3,8 @@
 Agent 相关常量
 """
 
+from __future__ import annotations
+
 from .base import BaseEnum
 
 

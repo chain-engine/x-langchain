@@ -244,7 +244,7 @@ class LCAgent:
                                     tool_context = {
                                         **context,
                                         "tool_name": msg.name,
-                                        "tool_args": getattr(msg, "tool_call_id", {}),
+                                        "tool_args": getattr(msg, "tool_call", {}),
                                     }
                                     self._middleware.before_invoke(tool_context)
                                     yield {"type": "tool", "name": msg.name}
@@ -360,4 +360,10 @@ class LCAgent:
         return f"<LCAgent: tools={len(self._tools)}>"
 
 
-__all__ = ["LCAgent", "AgentResponse"]
+__all__ = [
+    "LCAgent",
+    "AgentResponse",
+    "chat_history_service",
+    "create_chat_history_service",
+    "generate_session_id",
+]

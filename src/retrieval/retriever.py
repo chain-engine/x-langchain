@@ -175,7 +175,7 @@ class EnsembleRetriever(BaseRetriever):
                 for rank, doc in enumerate(docs, 1):
                     doc_id = getattr(doc, "id", None) or str(hash(doc.page_content))
                     # Reciprocal Rank Fusion 分数
-                    score = weight / (c + rank)
+                    score = weight / (self._c + rank)
                     if doc_id in all_results:
                         all_results[doc_id] = (doc, all_results[doc_id][1] + score)
                     else:

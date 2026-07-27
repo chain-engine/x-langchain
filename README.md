@@ -159,20 +159,40 @@ x-langchain/
 
 ### 核心架构
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Agent (协调器)                              │
-│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐    │
-│  │   LLM   │  Memory  │  Plan   │   Act    │  Tools   │    │
-│  │  (大脑) │  (记忆)  │ (推理)  │  (执行)  │  (工具)  │    │
-│  └──────────┴──────────┴──────────┴──────────┴──────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-              ┌───────────────────────────────┐
-              │     LangChain / LangGraph      │
-              │   ReAct 范式统一推理与执行      │
-              └───────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Agent["Agent (协调器)"]
+        LLM[LLM<br/>大脑]
+        MEM[Memory<br/>记忆]
+        PLN[Plan<br/>推理]
+        ACT[Act<br/>执行]
+        TOL[Tools<br/>工具]
+    end
+
+    subgraph Prompts["Prompts (提示词工程)"]
+        PRT[PromptTemplate<br/>模板]
+        FSP[FewShot<br/>少样本]
+        PLP[Pipeline<br/>管道]
+        DYP[Dynamic<br/>动态提示]
+    end
+
+    subgraph LangChain["LangChain / LangGraph"]
+        REACT[ReAct 范式<br/>推理与执行]
+    end
+
+    LLM --> PRT
+    MEM --> PLN
+    PLN --> ACT
+    ACT --> TOL
+    PRT --> REACT
+    FSP --> REACT
+    PLP --> REACT
+    DYP --> REACT
+    REACT --> LLM
+
+    style Agent fill:#4A90D9,color:#fff
+    style Prompts fill:#E67E22,color:#fff
+    style LangChain fill:#27AE60,color:#fff
 ```
 
 ### 组件职责
@@ -182,6 +202,7 @@ x-langchain/
 | LLM | `llms/` | 统一封装多种模型提供者（DeepSeek/豆包/通义千问/Mock） |
 | Memory | `memories/` | 对话历史记忆（基础 + 高级 + 多种持久化后端） |
 | Plan/Act | `agent/` | 推理-行动循环，基于 LangGraph ReAct Agent 实现 |
+| Prompts | `prompts/` | 提示词模板（基础/Few-shot/管道/动态提示词） |
 | Tools | `tools/` | 插件化工具系统（天气/搜索/数据库/MCP/TextToSQL） |
 | Retrieval | `retrieval/` | RAG 完整工具链（Embedding/VectorStore/Retriever） |
 | Output Parser | `output_parsers/` | 结构化输出解析（JSON/Pydantic/XML/Datetime） |
@@ -208,6 +229,14 @@ graph TB
 
     subgraph 记忆层
         MM[对话记忆<br/>memories/]
+    end
+
+    subgraph 提示词层
+        PR[Prompts<br/>templates/few_shot/advanced]
+        PRT[PromptTemplate]
+        FSP[FewShot]
+        PLP[Pipeline]
+        DYP[Dynamic]
     end
 
     subgraph 模型层
@@ -250,6 +279,12 @@ graph TB
     CLI --> AG
     AG --> MM & MF & ED & RT & WT & CT & WS & ER & SQL & MCP
     AG --> CFG & LOG & CTN & MID
+    AG --> PR
+    PR --> PRT & FSP & PLP & DYP
+    PRT --> MF
+    FSP --> MF
+    PLP --> MF
+    DYP --> MF
     MM --> FS & RD & DB
     MF --> DS & DJ & TY & MK
     ED --> VS

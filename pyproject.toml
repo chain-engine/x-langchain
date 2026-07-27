@@ -1,6 +1,6 @@
 [project]
 name = "x-langchain"
-version = "0.2.0"
+version = "0.4.0"
 description = "LangChain Learning and Practice Project"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -51,9 +51,12 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = ["agent", "core", "infras", "llms", "memories", "tools", "constants"]
 package-dir = {"" = "src"}
-py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["src", "src.*"]
+exclude = ["src.*__pycache__*"]
 
 [project.scripts]
 x-langchain = "main:run"
