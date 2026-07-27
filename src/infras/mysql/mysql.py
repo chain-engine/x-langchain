@@ -2,7 +2,8 @@
 """
 数据库连接管理
 
-提供同步和异步的数据库连接。
+基础设施层：提供同步和异步的数据库连接会话工厂。
+纯资源管理，不包含任何业务逻辑。
 """
 
 from typing import AsyncGenerator, Generator
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.config import settings
 
-from .models import Base
+from models.base import Base
 
 # 同步引擎
 engine = create_engine(
@@ -49,6 +50,10 @@ AsyncSessionLocal = async_sessionmaker(
 def get_db() -> Generator[Session, None, None]:
     """
     获取同步数据库会话（用于依赖注入）
+
+    用法:
+        for db in get_db():
+            # 使用 db
     """
     db = SessionLocal()
     try:
@@ -81,3 +86,13 @@ async def async_init_db() -> None:
     """
     async with async_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+
+def dispose_engine() -> None:
+    """释放同步引擎资源"""
+    engine.dispose()
+
+
+async def async_dispose_engine() -> None:
+    """异步释放异步引擎资源"""
+    await async_engine.dispose()

@@ -6,7 +6,7 @@
 """
 
 from .config import settings
-from .container import lifespan_container
+from .di import lifespan_container
 from .exceptions import XLangChainError
 from .logger import logger
 

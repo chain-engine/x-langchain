@@ -9,7 +9,7 @@ import sys
 import warnings
 
 from core import settings, logger
-from core.container import lifespan_container
+from core.di import lifespan_container
 
 
 warnings.filterwarnings(

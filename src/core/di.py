@@ -30,7 +30,7 @@ class Container:
     使用方式有两种：
 
     方式一：分步写法（先获取容器，再进入上下文）
-        from core.container import lifespan_container
+        from core.di import lifespan_container
 
         container = lifespan_container()      # 创建/获取单例
         with container:                       # 进入上下文，触发 startup
@@ -38,7 +38,7 @@ class Container:
         # 退出上下文时自动调用 shutdown
 
     方式二：链式写法（直接在 with 中调用）
-        from core.container import lifespan_container
+        from core.di import lifespan_container
 
         with lifespan_container() as container:   # 创建容器并立即进入上下文
             agent = container.agent                 # 使用依赖
@@ -117,14 +117,14 @@ class Container:
     def db_engine(self) -> Engine:
         """获取数据库引擎（懒加载）"""
         if self._engine is None:
-            from infras.mysql.mysql import engine as _engine
+            from infras.mysql import engine as _engine
 
             self._engine = _engine
         return self._engine
 
     def get_db(self) -> Generator[Session, None, None]:
         """获取同步数据库会话（依赖注入用）"""
-        from infras.mysql.mysql import get_db as _get_db
+        from infras.mysql import get_db as _get_db
 
         yield from _get_db()
 
@@ -136,6 +136,52 @@ class Container:
         if not hasattr(DBOperations, "_singleton_instance"):
             DBOperations._singleton_instance = DBOperations()
         return DBOperations._singleton_instance
+
+    # endregion
+
+    # region Repositories
+
+    def get_chat_repository(self) -> Any:
+        """获取同步 Chat 仓储实例（依赖注入用）"""
+        from infras.mysql import SessionLocal
+        from repositories.chat import SyncChatRepository
+
+        return SyncChatRepository(SessionLocal())
+
+    def get_async_chat_repository(self) -> Any:
+        """获取异步 Chat 仓储实例（依赖注入用）"""
+        from infras.mysql import AsyncSessionLocal
+        from repositories.chat import AsyncChatRepository
+
+        return AsyncChatRepository(AsyncSessionLocal())
+
+    def get_conversation_repository(self) -> Any:
+        """获取同步 Conversation 仓储实例"""
+        from infras.mysql import SessionLocal
+        from repositories.conversation import SyncConversationRepository
+
+        return SyncConversationRepository(SessionLocal())
+
+    def get_async_conversation_repository(self) -> Any:
+        """获取异步 Conversation 仓储实例"""
+        from infras.mysql import AsyncSessionLocal
+        from repositories.conversation import AsyncConversationRepository
+
+        return AsyncConversationRepository(AsyncSessionLocal())
+
+    def get_message_repository(self) -> Any:
+        """获取同步 Message 仓储实例"""
+        from infras.mysql import SessionLocal
+        from repositories.message import SyncMessageRepository
+
+        return SyncMessageRepository(SessionLocal())
+
+    def get_async_message_repository(self) -> Any:
+        """获取异步 Message 仓储实例"""
+        from infras.mysql import AsyncSessionLocal
+        from repositories.message import AsyncMessageRepository
+
+        return AsyncMessageRepository(AsyncSessionLocal())
 
     # endregion
 
@@ -247,7 +293,7 @@ def lifespan_container() -> Container:
 
     用法示例：
 
-        from core.container import lifespan_container
+        from core.di import lifespan_container
 
         # 方式一：分步写法
         container = lifespan_container()

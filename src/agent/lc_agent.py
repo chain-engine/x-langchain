@@ -6,16 +6,18 @@ LangChain Agent 封装
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Generator, List, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Generator, List, Optional, Sequence
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
 from langgraph.prebuilt import create_react_agent
 
-from agent.chat_history_service import ChatHistoryService, create_chat_history_service
 from core.logger import logger
 from core.middleware import DEFAULT_MIDDLEWARE_CHAIN, MiddlewareChain
 from llms import create_chat_model
+
+if TYPE_CHECKING:
+    from repositories import ChatRepository
 
 
 @dataclass
@@ -40,7 +42,7 @@ class LCAgent:
         state_schema: Optional[type] = None,
         middleware_chain: Optional[MiddlewareChain] = None,
         session_id: Optional[str] = None,
-        chat_history_service: Optional[ChatHistoryService] = None,
+        chat_repository: Optional["ChatRepository"] = None,
         auto_persist: bool = True,
     ):
         if llm is None:
@@ -60,7 +62,7 @@ class LCAgent:
         self._state_schema = state_schema
         self._middleware: MiddlewareChain = middleware_chain or DEFAULT_MIDDLEWARE_CHAIN
         self._session_id: Optional[str] = session_id
-        self._chat_history_service: Optional[ChatHistoryService] = chat_history_service
+        self._chat_repository: Optional["ChatRepository"] = chat_repository
         self._auto_persist: bool = auto_persist
 
         self._agent: Runnable = create_react_agent(
@@ -93,39 +95,58 @@ class LCAgent:
     def session_id(self) -> Optional[str]:
         return self._session_id
 
-    def _get_history_service(self) -> Optional[ChatHistoryService]:
-        """获取历史服务实例（延迟创建）。"""
-        if self._chat_history_service is not None:
-            return self._chat_history_service
+    def _get_repository(self) -> Optional["ChatRepository"]:
+        """获取仓储实例（延迟创建）。"""
+        if self._chat_repository is not None:
+            return self._chat_repository
         if self._session_id is None:
             return None
         try:
-            self._chat_history_service = create_chat_history_service()
-            return self._chat_history_service
+            import asyncio
+            from repositories import ChatRepository
+            from infras.mysql import AsyncSessionLocal
+
+            loop = asyncio.new_event_loop()
+            try:
+                session = loop.run_until_complete(AsyncSessionLocal().__aenter__())
+                self._chat_repository = ChatRepository(session)
+                return self._chat_repository
+            finally:
+                loop.close()
         except Exception as e:
-            logger.warning(f"无法创建 ChatHistoryService: {e}")
+            logger.warning(f"无法创建 ChatRepository: {e}")
             return None
 
     def _load_history(self, session_id: str) -> list:
         """加载历史消息并转换为 LangChain 格式。"""
-        svc = self._get_history_service()
-        if svc is None:
+        import asyncio
+
+        repo = self._get_repository()
+        if repo is None:
             return []
-        messages = svc.get_messages(session_id)
-        from langchain_core.messages import AIMessage, HumanMessage
-        result = []
-        for msg in messages:
-            if msg.role == "user":
-                result.append(("user", msg.content))
-            else:
-                result.append(("ai", msg.content))
-        logger.debug(f"加载 {len(result)} 条历史消息到会话 {session_id}")
-        return result
+        try:
+            loop = asyncio.new_event_loop()
+            messages = loop.run_until_complete(repo.get_messages(session_id))
+            result = []
+            for msg in messages:
+                if msg.role == "user":
+                    result.append(("user", msg.content))
+                else:
+                    result.append(("ai", msg.content))
+            logger.debug(f"加载 {len(result)} 条历史消息到会话 {session_id}")
+            return result
+        except Exception as e:
+            logger.warning(f"加载历史消息失败: {e}")
+            return []
+        finally:
+            loop.close()
 
     def _save_message(self, session_id: str, role: str, content: str) -> None:
         """保存单条消息到 MySQL。"""
-        svc = self._get_history_service()
-        if svc is None:
+        import asyncio
+
+        repo = self._get_repository()
+        if repo is None:
             return
         try:
             model_provider = (
@@ -133,12 +154,13 @@ class LCAgent:
                 if hasattr(self._llm, "__class__")
                 else "unknown"
             )
-            svc.add_message(
-                session_id=session_id,
-                role=role,
-                content=content,
-                model_provider=model_provider,
-            )
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(
+                    repo.add_message(session_id, role, content, model_provider)
+                )
+            finally:
+                loop.close()
         except Exception as e:
             logger.warning(f"保存消息失败: {e}")
 
@@ -275,56 +297,62 @@ class LCAgent:
         logger.info(f"添加 {len(tools)} 个工具，重新创建 Agent")
 
     def add_memory(self, content: str, memory_type: str = "general") -> None:
-        """
-        添加记忆到会话历史。
-
-        Args:
-            content: 记忆内容
-            memory_type: 记忆类型（如 "general", "fact", "preference"）
-        """
+        """添加记忆到会话历史。"""
         if self._session_id:
             self._save_message(self._session_id, "memory", content)
             logger.debug(f"添加记忆 [{memory_type}]: {content[:50]}...")
 
     def search_memory(self, query: str, top_k: int = 5) -> list:
-        """
-        搜索会话历史中的相关记忆。
+        """搜索会话历史中的相关记忆。"""
+        import asyncio
 
-        Args:
-            query: 搜索关键词
-            top_k: 返回数量上限
-
-        Returns:
-            匹配的消息列表
-        """
-        svc = self._get_history_service()
-        if svc is None or self._session_id is None:
+        repo = self._get_repository()
+        if repo is None or self._session_id is None:
             return []
-        return svc.search_messages(self._session_id, query, limit=top_k)
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(
+                    repo.search_messages(self._session_id, query, top_k)
+                )
+            finally:
+                loop.close()
+        except Exception:
+            return []
 
     def clear_memory(self) -> bool:
-        """
-        清空当前会话的所有记忆（保留会话）。
+        """清空当前会话的所有记忆（保留会话）。"""
+        import asyncio
 
-        Returns:
-            是否清空成功
-        """
-        svc = self._get_history_service()
-        if svc is None or self._session_id is None:
+        repo = self._get_repository()
+        if repo is None or self._session_id is None:
             return False
-        return svc.clear_conversation(self._session_id)
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(
+                    repo.clear_conversation_messages(self._session_id)
+                )
+            finally:
+                loop.close()
+        except Exception:
+            return False
 
     def get_memory_summary(self) -> dict:
-        """
-        获取当前会话的记忆摘要。
+        """获取当前会话的记忆摘要。"""
+        import asyncio
 
-        Returns:
-            会话统计信息
-        """
-        svc = self._get_history_service()
-        if svc is None or self._session_id is None:
+        repo = self._get_repository()
+        if repo is None or self._session_id is None:
             return {}
-        return svc.get_session_summary(self._session_id)
+        try:
+            loop = asyncio.new_event_loop()
+            try:
+                return loop.run_until_complete(repo.get_session_summary(self._session_id))
+            finally:
+                loop.close()
+        except Exception:
+            return {}
 
     def _extract_content(self, result: Any) -> str:
         if isinstance(result, dict) and "messages" in result:
@@ -363,7 +391,4 @@ class LCAgent:
 __all__ = [
     "LCAgent",
     "AgentResponse",
-    "chat_history_service",
-    "create_chat_history_service",
-    "generate_session_id",
 ]

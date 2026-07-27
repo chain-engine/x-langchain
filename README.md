@@ -60,7 +60,7 @@ x-langchain/
 │   ├── core/                           # 核心基础设施
 │   │   ├── config.py                   # 配置管理（pydantic-settings）
 │   │   ├── logger.py                   # 日志系统（loguru）
-│   │   ├── container.py                 # 依赖注入容器
+│   │   ├── di.py                         # 依赖注入容器
 │   │   ├── middleware.py                # 中间件（输入验证/计时/迭代限制）
 │   │   └── exceptions.py                # 自定义异常
 │   │
@@ -223,7 +223,7 @@ graph TB
     subgraph 核心组件层
         CFG[配置管理<br/>config.py]
         LOG[日志系统<br/>logger.py]
-        CTN[依赖注入容器<br/>container.py]
+        CTN[依赖注入容器<br/>di.py]
         MID[中间件<br/>middleware.py]
     end
 

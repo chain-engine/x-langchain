@@ -67,7 +67,7 @@ x-langchain/
 │   ├── core/                           # Core infrastructure
 │   │   ├── config.py                   # Configuration (pydantic-settings)
 │   │   ├── logger.py                   # Logging (loguru)
-│   │   ├── container.py                # Dependency injection
+│   │   ├── di.py                        # Dependency injection
 │   │   ├── middleware.py               # Middleware (validation/timing/limits)
 │   │   └── exceptions.py               # Custom exceptions
 │   │
@@ -203,7 +203,7 @@ graph TB
     subgraph Core Layer
         CFG[Configuration<br/>config.py]
         LOG[Logging<br/>logger.py]
-        CTN[Container<br/>container.py]
+        CTN[Container<br/>di.py]
         MID[Middleware<br/>middleware.py]
     end
 

@@ -12,7 +12,6 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
 from langgraph.prebuilt import create_react_agent
 
-from agent.chat_history_service import ChatHistoryService, create_chat_history_service
 from agent.lc_agent import AgentResponse, LCAgent
 from core.logger import logger
 from core.middleware import DEFAULT_MIDDLEWARE_CHAIN, MiddlewareChain
@@ -60,8 +59,7 @@ class AsyncLCAgent(LCAgent):
         state_schema = kwargs.pop("state_schema", None)
         middleware_chain = kwargs.pop("middleware_chain", None)
         session_id = kwargs.pop("session_id", None)
-        chat_history_service = kwargs.pop("chat_history_service", None)
-        async_chat_history_service = kwargs.pop("async_chat_history_service", None)
+        chat_repository = kwargs.pop("chat_repository", None)
         auto_persist = kwargs.pop("auto_persist", True)
         agent_kwargs = dict(kwargs.pop("agent_kwargs", {}) or {})
         for option_name in _AGENT_OPTION_NAMES:
@@ -85,8 +83,7 @@ class AsyncLCAgent(LCAgent):
         self._state_schema = state_schema
         self._middleware: MiddlewareChain = middleware_chain or DEFAULT_MIDDLEWARE_CHAIN
         self._session_id: Optional[str] = session_id
-        self._chat_history_service: Optional[ChatHistoryService] = chat_history_service
-        self._async_chat_history_service = async_chat_history_service
+        self._chat_repository = chat_repository
         self._auto_persist: bool = auto_persist
         self._agent_options = agent_kwargs
 
@@ -111,46 +108,21 @@ class AsyncLCAgent(LCAgent):
             return await value
         return value
 
-    async def _get_history_service_async(self) -> Any:
-        """异步获取历史服务，优先使用调用方注入的服务。"""
-        if self._async_chat_history_service is not None:
-            return self._async_chat_history_service
-        if self._chat_history_service is not None:
-            return self._chat_history_service
+    async def _get_repository_async(self) -> Any:
+        """异步获取仓储实例，优先使用调用方注入的仓储。"""
+        if self._chat_repository is not None:
+            return self._chat_repository
 
         try:
-            factory = create_chat_history_service
-            if inspect.iscoroutinefunction(factory):
-                service = await factory()
-            else:
-                service = await asyncio.to_thread(factory)
-            self._chat_history_service = service
-            return service
+            from repositories import ChatRepository
+            from infras.mysql import AsyncSessionLocal
+
+            session = await AsyncSessionLocal().__aenter__()
+            self._chat_repository = ChatRepository(session)
+            return self._chat_repository
         except Exception as exc:
-            logger.warning(f"无法创建异步 ChatHistoryService: {exc}")
+            logger.warning(f"无法创建 ChatRepository: {exc}")
             return None
-
-    @staticmethod
-    async def _call_service(
-        service: Any,
-        method_names: tuple[str, ...],
-        *args: Any,
-        **kwargs: Any,
-    ) -> Any:
-        """调用历史服务的异步或同步方法。"""
-        for method_name in method_names:
-            method = getattr(service, method_name, None)
-            if method is None:
-                continue
-
-            if inspect.iscoroutinefunction(method):
-                result = method(*args, **kwargs)
-            else:
-                result = await asyncio.to_thread(method, *args, **kwargs)
-            if inspect.isawaitable(result):
-                result = await result
-            return result
-        return _MISSING
 
     async def aget_history(self, session_id: str) -> list:
         """异步加载会话历史并转换为 LangChain 消息元组。
@@ -161,19 +133,12 @@ class AsyncLCAgent(LCAgent):
         Returns:
             按时间顺序排列的 ``(role, content)`` 消息列表。
         """
-        service = await self._get_history_service_async()
-        if service is None:
+        repo = await self._get_repository_async()
+        if repo is None:
             return []
 
         try:
-            messages = await self._call_service(
-                service,
-                ("aget_messages", "get_messages_async", "get_messages"),
-                session_id,
-            )
-            if messages is _MISSING:
-                return []
-
+            messages = await repo.get_messages(session_id)
             history = []
             for message in messages:
                 if isinstance(message, dict):
@@ -203,33 +168,13 @@ class AsyncLCAgent(LCAgent):
             role: 消息角色，例如 ``user`` 或 ``assistant``。
             content: 消息内容。
         """
-        service = await self._get_history_service_async()
-        if service is None:
+        repo = await self._get_repository_async()
+        if repo is None:
             return
 
         model_provider = self._llm.__class__.__name__ if self._llm is not None else "unknown"
         try:
-            result = await self._call_service(
-                service,
-                ("aadd_message", "add_message_async", "add_message"),
-                session_id=session_id,
-                role=role,
-                content=content,
-                model_provider=model_provider,
-            )
-            if result is _MISSING:
-                return
-        except TypeError:
-            try:
-                await self._call_service(
-                    service,
-                    ("aadd_message", "add_message_async", "add_message"),
-                    session_id,
-                    role,
-                    content,
-                )
-            except Exception as exc:
-                logger.warning(f"保存消息失败: {exc}")
+            await repo.add_message(session_id, role, content, model_provider)
         except Exception as exc:
             logger.warning(f"保存消息失败: {exc}")
 
