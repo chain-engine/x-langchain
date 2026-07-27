@@ -2,162 +2,191 @@
 
 > LangChain Learning and Practice Project - Building Production-Level LLM Applications with Best Practices
 
-`x-langchain` is a comprehensive LangChain learning and practice project designed to help developers systematically learn and master the core concepts and application methods of the LangChain framework. This project demonstrates how to use LangChain to build large language model applications through practical cases, including model integration, tool calling, context management, and other key features, providing practical references for both beginners and advanced LangChain developers.
+`x-langchain` is a comprehensive LangChain learning and practice project designed to help developers systematically learn and master the core concepts and application methods of the LangChain framework.
+
+**Core Value**: Out-of-the-box multi-model support, plugin-based tool system, complete TextToSQL solution
+
+**Use Cases**: Intelligent customer service, data query assistants, enterprise knowledge base Q&A, LLM application prototyping
 
 ---
 
-## 📌 Table of Contents
+## Table of Contents
 
-- [Core Features](#-core-features)
-- [Quick Start](#-quick-start)
-- [Project Structure](#-project-structure)
-- [Configuration](#-configuration)
-- [Usage](#-usage)
-- [Testing](#-testing)
-- [License](#-license)
-- [Support and Contribution](#-support-and-contribution)
-
----
-
-## ✨ Core Features
-
-- **Multi-model Compatibility**: Supports mainstream LLM backends such as DeepSeek, Doubao, and Alibaba Tongyi Qianwen
-- **Tool Calling (Function Calling)**: Integrates external APIs and business systems through a declarative interface
-- **TextToSQL Functionality**: Supports natural language to SQL conversion, including question rewriting, Schema parsing, SQL generation, validation, and execution
-- **Context Management**: Built-in dialogue history management, supporting continuous conversations
-- **Security and Compliance**:
-  - API key management (loaded from environment variables, avoiding hardcoding)
-  - Input/output content filtering
-- **Observability**: Integrated structured logging system for monitoring and debugging
-- **Modern Architecture**: Built on LangChain, supporting type safety and modular design
-- **Command-line Interface**: Provides a full-featured command-line tool supporting model selection and interactive dialogue
+- [Core Features](#core-features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [System Architecture](#system-architecture)
+- [Quick Start](#quick-start)
+- [Core Modules](#core-modules)
+- [Plugin Tool System](#plugin-tool-system)
+- [Configuration](#configuration)
+- [License](#license)
 
 ---
 
-## 🚀 Quick Start
+## Core Features
 
-### Requirements
-
-- Python 3.11 or higher
-- Recommended to use [`uv`](https://github.com/astral-sh/uv) as package manager (also compatible with `pip`)
-
-### Installation and Running
-
-```bash
-# Clone the project
-git clone https://github.com/chain-engine/x-langchain.git
-cd x-langchain
-
-# Install dependencies (recommended to use uv)
-uv sync
-
-# Configure environment variables
-cp .env.example .env
-# Edit .env and fill in necessary API keys and database configuration
-
-# Run AI assistant (enter interactive dialogue mode)
-# Use default model (DeepSeek)
-uv run src/main.py
-
-# Or use installed command-line entry
-uv run x-langchain
-
-# Or specify model via environment variables
-MODEL_NAME=deepseek uv run src/main.py
-MODEL_NAME=doubao uv run src/main.py
-MODEL_NAME=tongyi uv run src/main.py
-```
+- **Multi-model Compatibility** - Supports DeepSeek, Doubao, Alibaba Tongyi Qianwen, and other mainstream LLM backends
+- **Agent Capabilities** - LangGraph ReAct Agent with Model, Plan, Act, Tools, Memory五大核心能力
+- **Tool Calling (Function Calling)** - Integrates external APIs and business systems through declarative interface
+- **TextToSQL Functionality** - Natural language to SQL conversion: question rewriting, Schema parsing, SQL generation, validation, and execution
+- **MCP Protocol Support** - Integrates Model Context Protocol with MCP tool calling
+- **Complete RAG Pipeline** - Embedding, VectorStore, DocumentLoader, TextSplitter, Retriever, SemanticMemory
+- **Multiple Memory Implementations** - Buffer, Summary, Window, Entity, CombinedMemory with Redis/File/Postgres/MongoDB persistence
+- **Output Parsers** - JSON, Pydantic, XML, Datetime, Structured output parsers
+- **Callback System** - Token statistics, timing analysis, LangSmith tracing, AIM monitoring, file logging
+- **Security & Compliance** - API key management (loaded from environment variables, no hardcoding)
+- **Observability** - Integrated structured logging system for monitoring and debugging
+- **Plugin Architecture** - Decorator-based tool auto-registration with hot-swapping support
 
 ---
 
-## 📁 Project Structure
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Core Framework** | LangChain, LangGraph, langchain-core |
+| **Model Integration** | langchain-openai, langchain-community, langchain-dashscope |
+| **Configuration** | pydantic-settings, python-dotenv |
+| **Tools** | duckduckgo-search, sqlalchemy, pymysql |
+| **MCP Protocol** | langchain-mcp-adapters |
+| **Logging** | loguru |
+| **Package Manager** | uv |
+| **Deployment** | Docker |
+
+---
+
+## Project Structure
 
 ```
 x-langchain/
-├── src/                                # Source code directory
-│   ├── main.py                         # Project main entry, CLI interface
-│   ├── __init__.py                     # Package initialization
-│   ├── core/                           # Core module
-│   │   ├── __init__.py               # Core module exports
-│   │   ├── config.py                  # Configuration management (pydantic-settings)
-│   │   ├── logger.py                  # Logging system (loguru)
-│   │   ├── container.py              # Dependency injection container
-│   │   ├── middleware.py             # Middleware
-│   │   └── exceptions.py             # Custom exceptions
-│   ├── constants/                      # Constants module
-│   │   ├── __init__.py               # Constants exports
+├── src/                                # Source code
+│   ├── __init__.py                     # Package init, export all modules
+│   ├── main.py                         # CLI entry point
+│   │
+│   ├── core/                           # Core infrastructure
+│   │   ├── config.py                   # Configuration (pydantic-settings)
+│   │   ├── logger.py                   # Logging (loguru)
+│   │   ├── container.py                # Dependency injection
+│   │   ├── middleware.py               # Middleware (validation/timing/limits)
+│   │   └── exceptions.py               # Custom exceptions
+│   │
+│   ├── llms/                           # LLM providers
+│   │   └── providers.py                 # Multi-model factory (DeepSeek/Doubao/Tongyi/Mock)
+│   │
+│   ├── memories/                        # Memory management
+│   │   ├── memory.py                  # Basic memory (ChatMessageHistory/BufferMemory)
+│   │   ├── advanced_memory.py          # Advanced (Summary/Window/Entity/Combined)
+│   │   └── chat_history.py             # Storage backends (Redis/File/Postgres/MongoDB)
+│   │
+│   ├── agent/                         # Agent module
+│   │   ├── lc_agent.py                # LangGraph ReAct Agent
+│   │   └── chat_history_service.py     # MySQL persistence
+│   │
+│   ├── tools/                         # Tool system
+│   │   ├── base.py                    # Tool base class (BaseXTool)
+│   │   ├── registry.py                 # Tool registry
+│   │   ├── weather_tool.py             # Weather (AMAP)
+│   │   ├── calendar_tool.py            # Calendar
+│   │   ├── web_tool.py                # Search (duckduckgo)
+│   │   ├── exchange_rate_tool.py       # Exchange rate
+│   │   ├── qiuchi_mcp/                # Qiuchi MCP tools
+│   │   └── text_to_sql/              # TextToSQL chain
+│   │
+│   ├── prompts/                        # Prompt templates
+│   │   ├── templates.py               # Basic (PromptTemplate/ChatPromptTemplate)
+│   │   ├── few_shot.py               # Few-shot templates
+│   │   └── advanced_templates.py       # Advanced (Pipeline/ChatMessage/FewShotChat)
+│   │
+│   ├── chains/                         # Chain module
+│   │   ├── llm_chain.py              # LLMChain
+│   │   ├── conversation_chain.py       # Conversation chain
+│   │   └── rag_chain.py              # RAG chain
+│   │
+│   ├── retrieval/                      # RAG infrastructure
+│   │   ├── embedding.py                # Embedding (OpenAI/DashScope/Local/Mock)
+│   │   ├── vectorstore.py             # VectorStore (Chroma/FAISS/InMemory)
+│   │   ├── document.py                # Document/Loader
+│   │   ├── splitter.py                # TextSplitter (Recursive/Token)
+│   │   ├── retriever.py               # Retriever (Vector/Ensemble/MultiQuery)
+│   │   ├── compression.py             # Compression retriever
+│   │   └── semantic_memory.py          # Semantic memory
+│   │
+│   ├── output_parsers/                 # Output parsers
+│   │   ├── json_parser.py             # JSON parser
+│   │   ├── pydantic_parser.py         # Pydantic parser
+│   │   ├── list_parser.py             # List parser
+│   │   ├── retry_parser.py            # Retry parser
+│   │   └── structured_parser.py         # Structured/XML/Datetime parsers
+│   │
+│   ├── callbacks/                      # Callbacks (observability)
+│   │   ├── handlers.py                # Standard (Token/Timing/Tracing/Streaming)
+│   │   └── community_handlers.py       # Community (StdOut/AIM/File/SensitiveInfo)
+│   │
+│   ├── runnables/                     # LCEL utilities
+│   │   ├── async_agent.py             # Async agent
+│   │   ├── configurable.py            # Dynamic LLM selection
+│   │   └── routines.py                # Chain helpers
+│   │
+│   ├── lcel/                          # LCEL module
+│   │   ├── chain.py                  # LCEL chains
+│   │   └── lcel_utils.py             # LCEL utilities
+│   │
+│   ├── constants/                      # Constants
 │   │   ├── base.py                   # Base constants
 │   │   ├── develop.py                 # Development constants
-│   │   └── streaming_modes.py         # Streaming modes
-│   ├── llms/                          # LLM module (model providers)
-│   │   ├── __init__.py               # Module exports
-│   │   └── providers.py               # Multi-model providers (DeepSeek/Doubao/Tongyi/Mock)
-│   ├── memories/                        # Memories module (memory management)
-│   │   ├── __init__.py               # Module exports
-│   │   └── memory.py                 # Conversation memory (based on LangChain)
-│   ├── agent/                        # Agent module (core)
-│   │   ├── __init__.py               # Module exports
-│   │   └── lc_agent.py               # LangChain Agent implementation (based on LangGraph)
-│   ├── tools/                        # Tools module (tool system)
-│   │   ├── __init__.py               # Tools module exports
-│   │   ├── registry.py               # Tool registry
-│   │   ├── weather_tool.py           # Weather query
-│   │   ├── calendar_tool.py          # Calendar query
-│   │   ├── web_tool.py               # Web search
-│   │   ├── exchange_rate_tool.py     # Exchange rate query
-│   │   ├── qiuchi_mcp/               # Qiuchi MCP tools
-│   │   └── text_to_sql/              # TextToSQL toolchain
-│   │       ├── __init__.py
-│   │       ├── question_rewrite_tool.py    # Question rewriting
-│   │       ├── get_schema_tool.py         # Schema parsing
-│   │       ├── generate_sql_tool.py       # SQL generation
-│   │       ├── validate_sql_tool.py       # SQL validation
-│   │       ├── execute_sql_tool.py        # SQL execution
-│   │       └── convert_to_natural_language_tool.py  # Result conversion
-│   └── infras/                        # Infrastructure layer
-│       └── mysql/                    # MySQL database module
-│           ├── __init__.py
+│   │   ├── streaming_modes.py         # Streaming modes
+│   │   └── agent.py                   # Agent modes
+│   │
+│   └── infras/                        # Infrastructure
+│       └── mysql/                    # MySQL
 │           ├── models.py              # ORM models
-│           ├── mysql.py               # Database connection
-│           └── operations.py          # Database operations
-├── tests/                             # Test module
-├── docs/                              # Documentation
-├── examples/                          # Examples
-├── logs/                              # Logs directory
-├── .env.example                       # Environment variables example
-├── pyproject.toml                     # Project metadata and dependencies
-├── Dockerfile                         # Docker build file
-└── README.md                          # Project documentation
+│           ├── mysql.py               # Connection
+│           └── operations.py          # Operations
+│
+├── tests/                              # Tests
+├── docs/                               # Documentation
+├── examples/                           # Examples
+├── logs/                               # Logs
+├── .env.example                        # Config template
+├── pyproject.toml                      # Dependencies
+├── Dockerfile                          # Docker
+└── README.md                           # Docs
 ```
-
-> **Note**: The Agent's "planning" and "action" capabilities are provided by LangChain/LangGraph's ReAct Agent, integrated into `agent/lc_agent.py`, not as a separate module.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ### Core Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          Agent (Coordinator)                    │
-│  ┌─────────────┬─────────────┬─────────────┬─────────────┐    │
-│  │    LLM     │   Memory    │   ReAct    │   Tools    │    │
-│  │  (Brain)   │   (Memory)  │ (Reasoning)│  (Execute) │    │
-│  └─────────────┴─────────────┴─────────────┴─────────────┘    │
+│                        Agent (Coordinator)                        │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐    │
+│  │   LLM   │  Memory  │   Plan   │   Act    │  Tools   │    │
+│  │  (Brain)│ (Memory) │ (Reason) │  (Exec)  │ (Tools)  │    │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┘    │
 └─────────────────────────────────────────────────────────────────┘
-
-Technology: Built on LangChain / LangGraph, ReAct paradigm unifies reasoning and execution
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │     LangChain / LangGraph        │
+              │   ReAct paradigm for reasoning   │
+              └───────────────────────────────┘
 ```
 
 ### Component Responsibilities
 
 | Component | Directory | Responsibility |
-|-----------|----------|----------------|
-| LLM | `llms/` | Unified multi-model providers (DeepSeek/Doubao/Tongyi/Mock) |
-| Memory | `memories/` | Conversation history (based on LangChain ChatMessageHistory) |
-| ReAct Agent | `agent/` | Reasoning-action loop, based on LangGraph |
-| Tools | `tools/` | Plugin-based tool system (weather/search/database/MCP) |
+|-----------|-----------|----------------|
+| LLM | `llms/` | Multi-model factory (DeepSeek/Doubao/Tongyi/Mock) |
+| Memory | `memories/` | Basic + Advanced + Multiple persistence backends |
+| Plan/Act | `agent/` | ReAct loop based on LangGraph |
+| Tools | `tools/` | Plugin system (weather/search/database/MCP/TextToSQL) |
+| Retrieval | `retrieval/` | RAG pipeline (Embedding/VectorStore/Retriever) |
+| Output Parser | `output_parsers/` | Structured output (JSON/Pydantic/XML/Datetime) |
+| Callback | `callbacks/` | Token stats/timing/logging/tracing |
 
 ### Layered Architecture
 
@@ -171,14 +200,15 @@ graph TB
         AG[Agent Instance<br/>lc_agent.py]
     end
 
-    subgraph Core Components
+    subgraph Core Layer
         CFG[Configuration<br/>config.py]
         LOG[Logging<br/>logger.py]
         CTN[Container<br/>container.py]
+        MID[Middleware<br/>middleware.py]
     end
 
     subgraph Memory Layer
-        MM[Conversation Memory<br/>memories/memory.py]
+        MM[Memories<br/>memory/advanced/chat_history]
     end
 
     subgraph Model Layer
@@ -189,116 +219,76 @@ graph TB
         MK[Mock]
     end
 
-    subgraph Tools Layer
-        subgraph Local Tools
-            WT[Weather]
-            CT[Calendar]
-            WS[Web Search]
-            ER[Exchange Rate]
-        end
-        subgraph MCP Tools
-            WMCP[Weather MCP]
-            QMCP[Qiuchi MCP]
-        end
-        subgraph TextToSQL
-            QR[Question Rewrite]
-            GS[Get Schema]
-            SG[Generate SQL]
-            VS[Validate SQL]
-            ES[Execute SQL]
-            CN[Convert to NL]
-        end
+    subgraph RAG Pipeline
+        ED[Embedding]
+        VS[VectorStore]
+        DL[DocumentLoader]
+        SP[TextSplitter]
+        RT[Retriever]
+        CM[Compression]
     end
 
-    subgraph Storage Layer
-        DB[(MySQL Database<br/>infras/mysql)]
+    subgraph Tools Layer
+        WT[Weather]
+        CT[Calendar]
+        WS[Search]
+        ER[Exchange Rate]
+        MCP[MCP Tools]
+        SQL[TextToSQL]
+    end
+
+    subgraph Output
+        OP[Output Parsers]
+        CB[Callbacks]
+    end
+
+    subgraph Storage
+        DB[(MySQL)]
+        RD[(Redis)]
+        FS[(File)]
     end
 
     CLI --> AG
-    AG --> MM
-    AG --> MF
-    AG --> CFG & LOG & CTN
-    MM --> CFG
+    AG --> MM & MF & ED & RT & WT & CT & WS & ER & SQL & MCP
+    AG --> CFG & LOG & CTN & MID
+    MM --> FS & RD & DB
     MF --> DS & DJ & TY & MK
-
-    AG -.-> QR & GS & SG & VS & ES & CN
-    GS -.-> DB
-    ES -.-> DB
+    ED --> VS
+    VS --> RT
+    DL --> SP --> RT
+    RT --> CM
 ```
 
-> **Notes**:
-> - Core Components: Configuration, logging, dependency injection container
-> - Memory Layer: Conversation history management (based on LangChain ChatMessageHistory)
-> - Tools Layer: TextToSQL chain - Question Rewrite → Get Schema → Generate SQL → Validate → Execute → Convert to NL
-> - Storage Layer: MySQL database, required by Schema parsing and SQL execution
-
-### Core Business Flow (ReAct Loop)
+### ReAct Execution Loop
 
 ```mermaid
 flowchart TD
-    subgraph Entry
-        U[User Input]
-        CLI[CLI]
-    end
+    Start([Start]) --> Input[User Input]
+    Input --> LoadMem[Load Memory]
+    LoadMem --> AppendCtx[Append Context]
 
-    subgraph Execution Loop
-        subgraph Loop Head
-            MM[Load History]
-            M1[Concatenate Context]
-        end
+    AppendCtx --> Think{LLM Reasoning}
+    Think -->|Need Tool| Act[Execute Tool]
+    Think -->|Direct Answer| FinalAnswer[Output Answer]
 
-        M2[Think]
-        M3{Need Tool?}
+    Act --> ToolExecute[Tool Execution]
+    ToolExecute --> DB[(Database)]
 
-        subgraph Branch
-            M4[Direct Response]
-            M5[Execute Tool]
-        end
+    DB --> Observe[Get Result]
+    Observe --> Continue{Continue Loop?}
 
-        M6[Observe]
-        M7{Continue Loop?}
+    Continue -->|Yes| Think
+    Continue -->|No| FinalAnswer
 
-        subgraph Tool Execution
-            T[Tools Layer]
-            DB[(MySQL)]
-            T --> DB
-        end
-    end
+    FinalAnswer --> SaveMem[Save Memory]
+    SaveMem --> Output[Return to User]
+    Output --> Input
 
-    M8[Output Final Answer]
-
-    U --> CLI
-    CLI --> MM
-    MM --> M1
-    M1 --> M2
-    M2 --> M3
-
-    M3 -->|No| M4
-    M4 --> M8
-
-    M3 -->|Yes| M5
-    M5 --> T
-    T --> M6
-    M6 --> M7
-
-    M7 -->|Yes| M2
-    M7 -->|No| M8
-
-    M8 --> CLI
-    CLI --> U
-
-    style M2 fill:#e1f5fe
-    style M5 fill:#fff3e0
-    style M6 fill:#e8f5e9
-    style M8 fill:#f3e5f5
+    style Think fill:#4A90D9,color:#fff
+    style Act fill:#E67E22,color:#fff
+    style Observe fill:#27AE60,color:#fff
+    style FinalAnswer fill:#9B59B6,color:#fff
 ```
-
-> **Technology**: Based on LangGraph for state machine management, supporting multi-round ReAct loops
-
-> **Notes**:
-> - Think: LLM reasoning - decide if tool is needed
-> - Act: Execute tool calls (e.g., TextToSQL query)
-> - Observe: Get tool result, feedback to LLM for continued reasoning
 
 ### Module Dependencies
 
@@ -308,213 +298,284 @@ graph LR
         M[main.py]
     end
 
-    subgraph Core Components
-        CC[core<br/>config/logger/container]
+    subgraph Core Infrastructure
+        CC[core<br/>config/logger/container/middleware]
     end
 
     subgraph Core Modules
         AG[agent<br/>lc_agent.py]
-        LL[llms]
-        MM[memories]
+        LL[llms<br/>providers.py]
+        MM[memories<br/>memory/advanced/chat_history]
+        TL[tools<br/>registry/weather/web...]
+        PR[prompts<br/>templates/few_shot/advanced]
+        RT[retrieval<br/>embedding/vectorstore/retriever...]
+        OP[output_parsers<br/>json/pydantic/xml...]
+        CB[callbacks<br/>handlers/community_handlers]
     end
 
-    subgraph Storage Layer
+    subgraph Storage
         DB[(MySQL)]
     end
 
-    M --> AG
-    M --> CC
-    AG --> LL
-    AG --> MM
-    AG --> CC
+    M --> AG & CC
+    AG --> LL & MM & TL & PR & RT & OP & CC
     LL --> CC
-    MM --> CC
-```
-
-> **Note**: Agent reasoning and action dispatch are implemented by LangChain/LangGraph, no separate Planning/Action modules needed.
-
----
-
-## ⚙️ Configuration
-
-### Environment Variable Configuration
-
-The project uses a `.env` file to store configuration information, including the following configuration items:
-
-#### DeepSeek Configuration
-
-```env
-# DeepSeek API
-DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-DEEPSEEK_API_BASE=https://api.deepseek.com/v1
-DEEPSEEK_MODEL_NAME=deepseek-chat
-```
-
-#### Doubao Configuration
-
-```env
-# Doubao API
-DOUBAO_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-DOUBAO_API_BASE=https://ark.cn-beijing.volces.com/api/v3
-DOUBAO_MODEL_NAME=ep-xxxxxxxxxxxxxx
-```
-
-#### Alibaba Cloud Configuration
-
-```env
-# Alibaba Cloud API
-ALIYUN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-ALIYUN_MODEL_NAME=qwen-plus
-```
-
-#### Database Configuration (for TextToSQL)
-
-```env
-# Database configuration
-DB_HOST=192.168.111.222
-DB_PORT=3306
-DB_USER=root
-DB_PASSWORD=123456
-DB_NAME=yeyushilai
-DB_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
-```
-
-#### General Configuration
-
-```env
-# General configuration
-TEMPERATURE=0.0
-DEBUG=False
-STRUCTURED=False
+    MM --> CC & DB
+    TL --> CC
+    RT --> CC & DB
+    OP --> CC
+    CB --> CC
 ```
 
 ---
 
-## 📖 Usage
+## Quick Start
 
-### Command-line Interface
+### Requirements
 
-The project provides a full-featured command-line entry:
+| Environment | Requirements |
+|-------------|--------------|
+| **Windows** | Python 3.11+, PowerShell or Git Bash |
+| **Linux/macOS** | Python 3.11+, any Shell |
+
+> Recommended to use [`uv`](https://github.com/astral-sh/uv) as package manager
+
+### Installation
 
 ```bash
-# Enter interactive dialogue mode (using default model DeepSeek)
+# Clone
+git clone https://github.com/chain-engine/x-langchain.git
+cd x-langchain
+
+# Install dependencies
+uv sync
+
+# Configure
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+### Run
+
+```bash
+# Default model (DeepSeek)
 uv run src/main.py
 
-# Or use installed command-line entry
-uv run x-langchain
-
-# Or specify model via environment variables
+# Or use environment variable
 MODEL_NAME=deepseek uv run src/main.py
 MODEL_NAME=doubao uv run src/main.py
 MODEL_NAME=tongyi uv run src/main.py
 ```
 
-### Interactive Dialogue Mode
-
-After starting the program, it will enter interactive dialogue mode:
+### Docker
 
 ```bash
-$ uv run src/main.py
+# Build
+docker build -t x-langchain:latest .
 
-==================================================
-Welcome to the AI Assistant! Enter 'exit', 'quit' or '退出' to end the conversation
-==================================================
-
-You: How's the weather in Shanghai?
-
-2026-03-05 10:00:00,123 - INFO - Query result:
-Shanghai is cloudy today, temperature 18°C, east wind level 3, humidity 65%, good air quality.
-
-You: Help me query the number of users in the database
-
-2026-03-05 10:01:00,456 - INFO - Query result:
-According to the database query, there are currently 150 users in the system.
-
-You: exit
-
-Thank you for using, goodbye!
-```
-
-### Model Selection
-
-You can select the model via environment variable `MODEL_NAME`:
-
-- `deepseek`: Use DeepSeek model (default)
-- `doubao`: Use Doubao model
-- `tongyi`: Use Alibaba Tongyi Qianwen model
-
-Example:
-
-```bash
-# Use DeepSeek (default)
-uv run src/main.py
-
-# Use Doubao
-MODEL_NAME=doubao uv run src/main.py
-
-# Use Tongyi
-MODEL_NAME=tongyi uv run src/main.py
+# Run
+docker run -it --rm \
+  -v $(pwd)/.env:/app/.env:ro \
+  -v $(pwd)/logs:/app/logs \
+  x-langchain:latest
 ```
 
 ---
 
-## 🧪 Testing
+## Core Modules
 
-### Running Tests
+### 1. Memories Module
 
-The project provides a comprehensive test suite to ensure code quality:
+```python
+from memories import (
+    # Basic
+    ConversationMemory,
+    BufferMemory,
+
+    # Advanced
+    ConversationSummaryMemory,
+    ConversationBufferWindowMemory,
+    ConversationEntityMemory,
+    CombinedMemory,
+
+    # Storage backends
+    create_chat_history,
+    RedisChatHistory,
+    FileChatHistory,
+    PostgresChatHistory,
+    MongoDBChatHistory,
+)
+```
+
+### 2. Retrieval Module
+
+```python
+from retrieval import (
+    # Embedding
+    EmbeddingFactory,
+    OpenAIEmbedding,
+    DashScopeEmbedding,
+    LocalEmbedding,
+
+    # VectorStore
+    VectorStoreFactory,
+    ChromaVectorStore,
+    FAISSVectorStore,
+    InMemoryVectorStore,
+
+    # Document & Splitter
+    Document,
+    DocumentLoader,
+    RecursiveTextSplitter,
+
+    # Retriever
+    VectorRetriever,
+    EnsembleRetriever,
+    MultiQueryRetriever,
+    ContextualCompressionRetriever,
+)
+```
+
+### 3. Output Parsers Module
+
+```python
+from output_parsers import (
+    # Basic
+    JsonOutputParser,
+    PydanticOutputParser,
+    StrOutputParser,
+    CommaSeparatedListOutputParser,
+    RetryOutputParser,
+
+    # Advanced
+    StructuredOutputParser,
+    XmlOutputParser,
+    DatetimeOutputParser,
+)
+```
+
+### 4. Callbacks Module
+
+```python
+from callbacks import (
+    # Standard
+    TokenCountCallbackHandler,
+    TimingCallbackHandler,
+    TracingCallbackHandler,
+    StreamingCallbackHandler,
+
+    # Community
+    StdOutCallbackHandler,
+    AimCallbackHandler,
+    FileCallbackHandler,
+    SensitiveInfoCallbackHandler,
+    EventLogCallbackHandler,
+)
+```
+
+### 5. Prompts Module
+
+```python
+from prompts import (
+    # Basic
+    PromptTemplate,
+    ChatPromptTemplate,
+    FewShotPromptTemplate,
+
+    # Advanced
+    PipelinePromptTemplate,
+    ChatMessagePromptTemplate,
+    FewShotChatMessagePromptTemplate,
+    DynamicPipelinePromptTemplate,
+)
+```
+
+---
+
+## Plugin Tool System
+
+Create new tools in 3 steps:
+
+```python
+# 1. Create file in tools/
+# tools/my_tool.py
+
+# 2. Use decorator
+from tools.registry import register_tool
+
+@register_tool(name="my_tool", category="custom", description="My tool")
+class MyTool:
+    def __init__(self):
+        self.name = "my_tool"
+        self.description = "My custom tool"
+
+    def run(self, param: str) -> str:
+        return f"Processed: {param}"
+
+# 3. Done! Auto-registered on import
+```
+
+---
+
+## Configuration
+
+```env
+# DeepSeek
+DEEPSEEK_API_KEY=sk-xxxxxxx
+DEEPSEEK_API_BASE=https://api.deepseek.com/v1
+DEEPSEEK_MODEL_NAME=deepseek-chat
+
+# Or Doubao
+DOUBAO_API_KEY=xxxxxxx
+DOUBAO_API_BASE=https://ark.cn-beijing.volces.com/api/v3
+DOUBAO_MODEL_NAME=ep-xxxxxxx
+
+# Database (TextToSQL)
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=your_password
+DB_NAME=your_database
+```
+
+---
+
+## Common Commands
 
 ```bash
-# Run all tests
+# Run tests
 uv run python -m pytest
 
-# Run specific test modules
-uv run python -m pytest tests/test_settings.py -v
-uv run python -m pytest tests/test_weather_tool.py -v
-uv run python -m pytest tests/test_providers.py -v
+# Format code
+uv run ruff format .
+
+# Type check
+uv run pyright
 ```
 
-### Code Quality
+---
 
-- **Type Checking**: Uses Python type annotations to ensure type safety
-- **Error Handling**: Added detailed error handling and fault tolerance mechanisms
-- **Logging System**: Integrated unified logging system for monitoring and debugging
-- **Modular Design**: Adopts modular design to improve code maintainability and extensibility
+## License
+
+MIT License. See [LICENSE](LICENSE) file.
 
 ---
 
-## 📄 License
+## References
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## 🤝 Support and Contribution
-
-### Support
-
-If you encounter any issues during use, please get support through the following channels:
-
-- Check [LangChain Official Documentation](https://python.langchain.com/docs/get_started/introduction)
-- Check [Project Documentation](README.md)
-- Submit [GitHub Issue](https://github.com/chain-engine/x-langchain/issues)
-
-### Contribution
-
-We welcome community contributions, including but not limited to:
-
-- Fixing bugs
-- Adding new features
-- Improving documentation
-- Optimizing performance
-
-Please submit your contributions through GitHub Pull Request.
+- [LangChain Docs](https://python.langchain.com/docs/get_started/introduction)
+- [LangGraph Docs](https://langchain-ai.github.io/langgraph/)
+- [DeepSeek API](https://platform.deepseek.com/docs/api)
+- [Doubao](https://www.doubao.com/)
+- [Alibaba Tongyi](https://help.aliyun.com/product/1081203.html)
 
 ---
 
-## Reference Documentation
+## Contact
 
-- [LangChain Official Documentation](https://python.langchain.com/docs/get_started/introduction)
-- [DeepSeek Official Documentation](https://platform.deepseek.com/docs/api)
-- [Doubao Official Documentation](https://www.doubao.com/)
-- [Alibaba Cloud Tongyi Qianwen Official Documentation](https://help.aliyun.com/product/1081203.html)
+| Item | Info |
+|------|------|
+| **Author** | John Young |
+| **Email** | john.young@foxmail.com |
+| **GitHub** | https://github.com/yeyushilai |
+| **Project** | https://github.com/chain-engine/x-langchain |

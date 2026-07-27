@@ -1,6 +1,6 @@
 # x-langchain
 
-`x-langchain` 是一个生产级的 LangChain 学习与实践项目，旨在帮助开发者系统学习和掌握 LangChain 框架的核心概念与应用方法。本项目通过实际案例展示如何使用 LangChain 构建大语言模型应用，包括模型集成、工具调用、上下文管理等关键功能，为 LangChain 初学者和进阶开发者提供实践参考。
+`x-langchain` 是一个生产级的 LangChain 学习与实践项目，旨在帮助开发者系统学习和掌握 LangChain 框架的核心概念与应用方法。
 
 **核心价值**：开箱即用的多模型支持、插件化工具系统、完整的 TextToSQL 解决方案
 
@@ -19,13 +19,16 @@
 
 ## 核心特性
 
-- **Agent 五大基础能力** - 支持模型、计划（未抽象体现）、行动（未抽象体现）、工具、记忆五大核心能力
 - **多模型兼容** - 支持 DeepSeek、豆包、阿里云通义千问等主流 LLM 后端
+- **Agent 能力** - 基于 LangGraph 的 ReAct Agent，支持模型、计划、行动、工具、记忆五大核心能力
 - **工具调用（Function Calling）** - 通过声明式接口集成外部 API 与业务系统
 - **TextToSQL 功能** - 支持自然语言到 SQL 的转换，包括问题重写、Schema 解析、SQL 生成、验证和执行
 - **MCP 协议支持** - 集成 Model Context Protocol，支持 MCP 工具调用
-- **上下文管理** - 内置对话历史管理，支持连续对话
-- **安全合规** - API 密钥管理（从环境变量加载，避免硬编码）、输入/输出内容过滤
+- **RAG 完整工具链** - Embedding、VectorStore、DocumentLoader、TextSplitter、Retriever、SemanticMemory
+- **多种 Memory 实现** - Buffer、Summary、Window、Entity、CombinedMemory 及 Redis/文件/Postgres/MongoDB 持久化
+- **输出解析器** - JSON、Pydantic、XML、Datetime、结构化输出等多种解析器
+- **回调系统** - Token 统计、耗时分析、LangSmith 追踪、AIM 监控、文件日志等
+- **安全合规** - API 密钥管理（从环境变量加载，避免硬编码）
 - **可观测性** - 集成结构化日志系统，便于监控和调试
 - **插件化架构** - 基于装饰器的工具自动注册，支持热插拔
 
@@ -35,8 +38,8 @@
 
 | 类别 | 技术 |
 |------|------|
-| **核心框架** | LangChain, LangGraph |
-| **模型集成** | langchain-openai, langchain-community, dashscope |
+| **核心框架** | LangChain, LangGraph, langchain-core |
+| **模型集成** | langchain-openai, langchain-community, langchain-dashscope |
 | **配置管理** | pydantic-settings, python-dotenv |
 | **工具库** | duckduckgo-search, sqlalchemy, pymysql |
 | **MCP 协议** | langchain-mcp-adapters |
@@ -51,62 +54,104 @@
 ```
 x-langchain/
 ├── src/                                # 源代码目录
+│   ├── __init__.py                     # 包初始化，导出所有模块
 │   ├── main.py                         # 项目主入口，CLI 交互接口
-│   ├── __init__.py                     # 包初始化
-│   ├── core/                           # 核心模块
-│   │   ├── __init__.py               # 核心模块导出
-│   │   ├── config.py                  # 配置管理（pydantic-settings）
-│   │   ├── logger.py                  # 日志系统（loguru）
-│   │   ├── container.py              # 依赖注入容器
-│   │   ├── middleware.py             # 中间件
-│   │   └── exceptions.py             # 自定义异常
-│   ├── constants/                      # 常量模块
-│   │   ├── __init__.py               # 常量导出
-│   │   ├── base.py                   # 基础常量
-│   │   ├── develop.py                 # 开发相关常量
-│   │   └── streaming_modes.py         # 流式传输模式
-│   ├── llms/                          # LLM 模块（模型提供者）
-│   │   ├── __init__.py               # 模块导出
-│   │   └── providers.py               # 多模型提供者（DeepSeek/豆包/通义千问/Mock）
-│   ├── memories/                        # Memories 模块（记忆管理）
-│   │   ├── __init__.py               # 模块导出
-│   │   └── memory.py                 # 对话记忆（基于 LangChain）
-│   ├── agent/                        # Agent 模块（核心）
-│   │   ├── __init__.py               # 模块导出
-│   │   └── lc_agent.py               # LangChain Agent 实现（基于 LangGraph）
-│   ├── tools/                        # Tools 模块（工具系统）
-│   │   ├── __init__.py               # 工具模块导出
-│   │   ├── registry.py               # 工具注册表
-│   │   ├── weather_tool.py           # 天气查询
-│   │   ├── calendar_tool.py          # 日历查询
-│   │   ├── web_tool.py               # 网络搜索
-│   │   ├── exchange_rate_tool.py     # 汇率查询
-│   │   ├── qiuchi_mcp/               # 秋池 MCP 工具包
-│   │   └── text_to_sql/              # TextToSQL 工具链
-│   │       ├── __init__.py
+│   │
+│   ├── core/                           # 核心基础设施
+│   │   ├── config.py                   # 配置管理（pydantic-settings）
+│   │   ├── logger.py                   # 日志系统（loguru）
+│   │   ├── container.py                 # 依赖注入容器
+│   │   ├── middleware.py                # 中间件（输入验证/计时/迭代限制）
+│   │   └── exceptions.py                # 自定义异常
+│   │
+│   ├── llms/                           # LLM 模块（模型提供者）
+│   │   └── providers.py                 # 多模型工厂（DeepSeek/豆包/通义千问/Mock）
+│   │
+│   ├── memories/                        # Memory 模块（记忆管理）
+│   │   ├── memory.py                   # 基础记忆（ChatMessageHistory/BufferMemory）
+│   │   ├── advanced_memory.py           # 高级记忆（Summary/Window/Entity/Combined）
+│   │   └── chat_history.py             # 多种存储后端（Redis/文件/Postgres/MongoDB）
+│   │
+│   ├── agent/                         # Agent 模块
+│   │   ├── lc_agent.py                # LangChain Agent 实现（基于 LangGraph）
+│   │   └── chat_history_service.py     # MySQL 持久化对话历史
+│   │
+│   ├── tools/                         # Tools 模块（工具系统）
+│   │   ├── base.py                    # 工具基类（BaseXTool）
+│   │   ├── registry.py                 # 工具注册表
+│   │   ├── weather_tool.py             # 天气查询（高德 AMAP）
+│   │   ├── calendar_tool.py            # 日历查询
+│   │   ├── web_tool.py                # 网络搜索（duckduckgo）
+│   │   ├── exchange_rate_tool.py       # 汇率查询
+│   │   ├── qiuchi_mcp/                # 秋池 MCP 工具包
+│   │   └── text_to_sql/               # TextToSQL 工具链
 │   │       ├── question_rewrite_tool.py    # 问题重写
 │   │       ├── get_schema_tool.py         # Schema 解析
 │   │       ├── generate_sql_tool.py       # SQL 生成
 │   │       ├── validate_sql_tool.py       # SQL 验证
 │   │       ├── execute_sql_tool.py        # SQL 执行
 │   │       └── convert_to_natural_language_tool.py  # 结果转换
+│   │
+│   ├── prompts/                        # Prompt 模块（提示词模板）
+│   │   ├── templates.py               # 基础模板（PromptTemplate/ChatPromptTemplate）
+│   │   ├── few_shot.py                # Few-shot 模板
+│   │   └── advanced_templates.py       # 高级模板（Pipeline/ChatMessage/FewShotChat）
+│   │
+│   ├── chains/                         # Chain 模块（链式调用）
+│   │   ├── llm_chain.py               # LLMChain
+│   │   ├── conversation_chain.py       # 对话链
+│   │   └── rag_chain.py               # RAG 链
+│   │
+│   ├── retrieval/                      # Retrieval 模块（RAG 基础设施）
+│   │   ├── embedding.py                # Embedding 工厂（OpenAI/ DashScope/Local/Mock）
+│   │   ├── vectorstore.py             # VectorStore 工厂（Chroma/FAISS/InMemory）
+│   │   ├── document.py                # Document/DocumentLoader/DirectoryLoader
+│   │   ├── splitter.py                # TextSplitter（Recursive/Token）
+│   │   ├── retriever.py               # Retriever（Vector/Ensemble/MultiQuery）
+│   │   ├── compression.py             # 压缩检索器（LLMCompactor/ChainFilter）
+│   │   └── semantic_memory.py          # 语义记忆
+│   │
+│   ├── output_parsers/                 # Output Parser 模块（输出解析）
+│   │   ├── json_parser.py             # JSON 解析器
+│   │   ├── pydantic_parser.py         # Pydantic 模型解析器
+│   │   ├── list_parser.py             # 列表解析器
+│   │   ├── retry_parser.py            # 重试解析器
+│   │   └── structured_parser.py        # 结构化/XML/Datetime 解析器
+│   │
+│   ├── callbacks/                      # Callback 模块（可观测性）
+│   │   ├── handlers.py                # 标准处理器（Token/Timing/Tracing/Streaming）
+│   │   └── community_handlers.py       # 社区处理器（StdOut/AIM/File/SensitiveInfo）
+│   │
+│   ├── runnables/                     # Runnable 模块（LCEL 工具）
+│   │   ├── async_agent.py             # 异步 Agent
+│   │   ├── configurable.py            # 动态 LLM 选择
+│   │   └── routines.py                # 链式调用辅助
+│   │
+│   ├── lcel/                          # LCEL 模块（LangChain Expression Language）
+│   │   ├── chain.py                  # LCEL 链式调用
+│   │   └── lcel_utils.py             # LCEL 工具函数
+│   │
+│   ├── constants/                      # 常量模块
+│   │   ├── base.py                   # 基础常量
+│   │   ├── develop.py                 # 开发相关常量
+│   │   ├── streaming_modes.py         # 流式传输模式
+│   │   └── agent.py                   # Agent 模式
+│   │
 │   └── infras/                        # 基础设施层
-│       └── mysql/                    # MySQL 数据库模块
-│           ├── __init__.py
+│       └── mysql/                    # MySQL 数据库
 │           ├── models.py              # ORM 模型
 │           ├── mysql.py               # 数据库连接
 │           └── operations.py          # 数据库操作
-├── tests/                             # 测试模块
-├── docs/                              # 文档目录
-├── examples/                          # 示例代码
-├── logs/                              # 日志目录
-├── .env.example                       # 环境变量配置示例
-├── pyproject.toml                     # 项目元数据和依赖
-├── Dockerfile                         # Docker 构建文件
-└── README.md                          # 项目文档
+│
+├── tests/                              # 测试模块
+├── docs/                               # 文档目录
+├── examples/                           # 示例代码
+├── logs/                               # 日志目录
+├── .env.example                        # 环境变量配置示例
+├── pyproject.toml                      # 项目元数据和依赖
+├── Dockerfile                          # Docker 构建文件
+└── README.md                           # 项目文档
 ```
-
-> **Note**: Agent 的"计划"和"行动"能力由 LangChain/LangGraph 的 ReAct Agent 统一提供，已集成在 `agent/lc_agent.py` 中，不作为独立模块存在。
 
 ---
 
@@ -116,14 +161,18 @@ x-langchain/
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                          Agent (协调器)                         │
-│  ┌─────────────┬─────────────┬─────────────┬─────────────┐    │
-│  │    LLM     │   Memory    │  ReAct     │   Tools    │    │
-│  │  (大脑)    │   (记忆)    │ (推理执行) │   (执行)   │    │
-│  └─────────────┴─────────────┴─────────────┴─────────────┘    │
+│                        Agent (协调器)                              │
+│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐    │
+│  │   LLM   │  Memory  │  Plan   │   Act    │  Tools   │    │
+│  │  (大脑) │  (记忆)  │ (推理)  │  (执行)  │  (工具)  │    │
+│  └──────────┴──────────┴──────────┴──────────┴──────────┘    │
 └─────────────────────────────────────────────────────────────────┘
-
-技术实现：基于 LangChain / LangGraph 构建，ReAct 范式统一推理与执行
+                              │
+                              ▼
+              ┌───────────────────────────────┐
+              │     LangChain / LangGraph      │
+              │   ReAct 范式统一推理与执行      │
+              └───────────────────────────────┘
 ```
 
 ### 组件职责
@@ -131,9 +180,12 @@ x-langchain/
 | 组件 | 目录 | 职责 |
 |------|------|------|
 | LLM | `llms/` | 统一封装多种模型提供者（DeepSeek/豆包/通义千问/Mock） |
-| Memory | `memories/` | 对话历史记忆（基于 LangChain ChatMessageHistory） |
-| ReAct Agent | `agent/` | 推理-行动循环，基于 LangGraph 实现 |
-| Tools | `tools/` | 插件化工具系统（天气/搜索/数据库/MCP） |
+| Memory | `memories/` | 对话历史记忆（基础 + 高级 + 多种持久化后端） |
+| Plan/Act | `agent/` | 推理-行动循环，基于 LangGraph ReAct Agent 实现 |
+| Tools | `tools/` | 插件化工具系统（天气/搜索/数据库/MCP/TextToSQL） |
+| Retrieval | `retrieval/` | RAG 完整工具链（Embedding/VectorStore/Retriever） |
+| Output Parser | `output_parsers/` | 结构化输出解析（JSON/Pydantic/XML/Datetime） |
+| Callback | `callbacks/` | 可观测性（Token 统计/耗时分析/日志追踪） |
 
 ### 分层架构图
 
@@ -151,10 +203,11 @@ graph TB
         CFG[配置管理<br/>config.py]
         LOG[日志系统<br/>logger.py]
         CTN[依赖注入容器<br/>container.py]
+        MID[中间件<br/>middleware.py]
     end
 
     subgraph 记忆层
-        MM[对话记忆<br/>memories/memory.py]
+        MM[对话记忆<br/>memories/]
     end
 
     subgraph 模型层
@@ -162,156 +215,78 @@ graph TB
         DS[DeepSeek]
         DJ[豆包]
         TY[通义千问]
-        MK[Mock 模型]
+        MK[Mock]
+    end
+
+    subgraph RAG 工具链
+        ED[Embedding]
+        VS[VectorStore]
+        DL[DocumentLoader]
+        SP[TextSplitter]
+        RT[Retriever]
+        CM[Compression]
     end
 
     subgraph 工具层
-        subgraph 本地工具
-            WT[天气工具]
-            CT[日历工具]
-            WS[网络搜索]
-            ER[汇率查询]
-        end
-        subgraph MCP 工具
-            WMCP[天气 MCP]
-            QMCP[秋池 MCP]
-        end
-        subgraph TextToSQL
-            QR[问题重写]
-            GS[获取 Schema]
-            SG[生成 SQL]
-            VS[验证 SQL]
-            ES[执行 SQL]
-            CN[结果转换]
-        end
+        WT[天气]
+        CT[日历]
+        WS[搜索]
+        ER[汇率]
+        MCP[MCP工具]
+        SQL[TextToSQL]
+    end
+
+    subgraph 输出处理
+        OP[Output Parser]
+        CB[Callbacks]
     end
 
     subgraph 存储层
-        DB[(MySQL 数据库<br/>infras/mysql)]
+        DB[(MySQL)]
+        RD[(Redis)]
+        FS[(文件)]
     end
 
     CLI --> AG
-    AG --> MM
-    AG --> MF
-    AG --> CFG & LOG & CTN
-    MM --> CFG
+    AG --> MM & MF & ED & RT & WT & CT & WS & ER & SQL & MCP
+    AG --> CFG & LOG & CTN & MID
+    MM --> FS & RD & DB
     MF --> DS & DJ & TY & MK
-
-    AG -.-> QR & GS & SG & VS & ES & CN
-    GS -.-> DB
-    ES -.-> DB
+    ED --> VS
+    VS --> RT
+    DL --> SP --> RT
+    RT --> CM
 ```
 
-> **说明**：
-> - 核心组件层：配置、日志、依赖注入容器等基础设施支撑
-> - 记忆层：对话历史管理（基于 LangChain ChatMessageHistory）
-> - 工具层：TextToSQL 工具链内，问题重写(QR) → 获取Schema → 生成SQL → 验证 → 执行 → 结果转换
-> - 存储层：MySQL 数据库，Schema 解析和 SQL 执行依赖此层
-
-### 核心业务流程图（ReAct 执行循环）
+### ReAct 执行循环
 
 ```mermaid
 flowchart TD
-    subgraph 入口
-        U[用户输入]
-        CLI[命令行接口]
-    end
+    Start([开始]) --> Input[用户输入]
+    Input --> LoadMem[加载记忆]
+    LoadMem --> AppendCtx[拼接上下文]
 
-    subgraph 执行循环
-        subgraph 循环头
-            MM[加载历史上下文]
-            M1[拼接上下文]
-        end
+    AppendCtx --> Think{LLM 推理}
+    Think -->|需要工具| Act[执行工具]
+    Think -->|直接回答| FinalAnswer[输出答案]
 
-        M2[推理思考 Think]
-        M3{是否需要工具?}
+    Act --> ToolExecute[工具执行]
+    ToolExecute --> DB[(数据库)]
 
-        subgraph 分支判断
-            M4[直接回复]
-            M5[执行工具]
-        end
+    DB --> Observe[获取结果]
+    Observe --> Continue{继续循环?}
 
-        M6[观测结果 Observe]
-        M7{继续循环?}
+    Continue -->|是| Think
+    Continue -->|否| FinalAnswer
 
-        subgraph 工具执行
-            T[工具层]
-            DB[(MySQL)]
-            T --> DB
-        end
-    end
+    FinalAnswer --> SaveMem[保存记忆]
+    SaveMem --> Output[返回用户]
+    Output --> Input
 
-    M8[输出最终答案]
-
-    U --> CLI
-    CLI --> MM
-    MM --> M1
-    M1 --> M2
-    M2 --> M3
-
-    M3 -->|否| M4
-    M4 --> M8
-
-    M3 -->|是| M5
-    M5 --> T
-    T --> M6
-    M6 --> M7
-
-    M7 -->|是| M2
-    M7 -->|否| M8
-
-    M8 --> CLI
-    CLI --> U
-
-    style M2 fill:#e1f5fe
-    style M5 fill:#fff3e0
-    style M6 fill:#e8f5e9
-    style M8 fill:#f3e5f5
-```
-
-> **技术栈**：基于 LangGraph 实现状态机管理，支持多轮 ReAct 循环
-
-> **说明**：
-> - Think：LLM 推理决策，判断是否需要调用工具
-> - Act：执行工具调用（如 TextToSQL 查询）
-> - Observe：获取工具结果，反馈给 LLM 继续推理
-
-```mermaid
-sequenceDiagram
-    participant U as 用户
-    participant CLI as CLI
-    participant MM as Memory
-    participant G as LangGraph
-    participant L as LLM
-    participant T as Tools
-    participant DB as MySQL
-
-    U->>CLI: 用户输入
-    CLI->>MM: 加载历史上下文
-    MM-->>CLI: 返回历史消息
-    CLI->>G: 创建状态
-    G->>L: Think: 推理决策
-    L-->>G: 返回推理结果
-    alt 不需要工具
-        G-->>CLI: 直接回复
-        CLI-->>U: 返回答案
-    else 需要工具
-        G->>T: Act: 执行工具
-        T->>DB: 查询/写入数据
-        DB-->>T: 返回结果
-        T-->>G: Observe: 返回结果
-        G->>MM: 更新记忆
-        G->>L: 继续推理
-        loop ReAct 循环
-            L-->>G: 思考
-            alt 继续调用工具
-                G->>T: Act
-                T-->>G: Observe
-            end
-        end
-        G-->>CLI: 输出最终答案
-        CLI-->>U: 返回答案
-    end
+    style Think fill:#4A90D9,color:#fff
+    style Act fill:#E67E22,color:#fff
+    style Observe fill:#27AE60,color:#fff
+    style FinalAnswer fill:#9B59B6,color:#fff
 ```
 
 ### 模块依赖关系
@@ -322,30 +297,34 @@ graph LR
         M[main.py]
     end
 
-    subgraph 核心组件
-        CC[core<br/>config/logger/container]
+    subgraph 核心基础设施
+        CC[core<br/>config/logger/container/middleware]
     end
 
     subgraph 核心模块
         AG[agent<br/>lc_agent.py]
-        LL[llms]
-        MM[memories]
+        LL[llms<br/>providers.py]
+        MM[memories<br/>memory/advanced/chat_history]
+        TL[tools<br/>registry/weather/web...]
+        PR[prompts<br/>templates/few_shot/advanced]
+        RT[retrieval<br/>embedding/vectorstore/retriever...]
+        OP[output_parsers<br/>json/pydantic/xml...]
+        CB[callbacks<br/>handlers/community_handlers]
     end
 
     subgraph 存储层
         DB[(MySQL)]
     end
 
-    M --> AG
-    M --> CC
-    AG --> LL
-    AG --> MM
-    AG --> CC
+    M --> AG & CC
+    AG --> LL & MM & TL & PR & RT & OP & CC
     LL --> CC
-    MM --> CC
+    MM --> CC & DB
+    TL --> CC
+    RT --> CC & DB
+    OP --> CC
+    CB --> CC
 ```
-
-> **说明**: Agent 的推理和行动调度由 LangChain/LangGraph 统一实现，不再需要独立的 Planning/Action 模块。
 
 ---
 
@@ -443,71 +422,128 @@ docker run -it --rm `
   x-langchain:latest
 ```
 
-### 常用命令
-
-```bash
-# 运行测试
-uv run python -m pytest
-
-# 运行特定测试模块
-uv run python -m pytest tests/test_providers.py -v
-
-# 代码格式化（如果安装了 ruff）
-uv run ruff format .
-
-# 类型检查（如果安装了 pyright）
-uv run pyright
-```
-
 ---
 
-## 使用方法
+## 核心模块详解
 
-### 交互式对话模式
+### 1. Memories 模块
 
-启动程序后，进入交互式对话模式：
+提供多种对话记忆实现：
 
-```bash
-$ uv run src/main.py
+```python
+from memories import (
+    # 基础记忆
+    ConversationMemory,        # 对话记忆（支持上下文窗口）
+    BufferMemory,              # 缓冲区记忆
 
-==================================================
-欢迎使用智能助手！输入 'exit'、'quit' 或 '退出' 结束对话
-==================================================
+    # 高级记忆
+    ConversationSummaryMemory, # 摘要记忆（自动压缩历史）
+    ConversationBufferWindowMemory,  # 窗口记忆（保留最近 N 条）
+    ConversationEntityMemory,  # 实体记忆（提取实体关系）
+    CombinedMemory,           # 组合记忆
 
-你: 上海天气怎么样？
-
-2026-03-05 10:00:00,123 - INFO - 查询结果:
-上海今天多云，气温 18°C，东风 3级，湿度 65%，空气质量良好。
-
-你: 帮我查询数据库中的用户数量
-
-2026-03-05 10:01:00,456 - INFO - 查询结果:
-根据数据库查询，当前系统中有 150 个用户。
-
-你: exit
-
-感谢使用，再见！
+    # 多种存储后端
+    create_chat_history,      # 工厂函数创建 ChatHistory
+    RedisChatHistory,         # Redis 存储
+    FileChatHistory,          # 文件存储
+    PostgresChatHistory,      # PostgreSQL 存储
+    MongoDBChatHistory,       # MongoDB 存储
+)
 ```
 
-### 模型选择
+### 2. Retrieval 模块
 
-通过环境变量 `MODEL_NAME` 指定模型：
+RAG 完整工具链：
 
-| 模型 | 环境变量 | 说明 |
-|------|---------|------|
-| DeepSeek | `MODEL_NAME=deepseek` | 默认模型，性价比高 |
-| 豆包 | `MODEL_NAME=doubao` | 字节跳动出品 |
-| 通义千问 | `MODEL_NAME=tongyi` | 阿里云出品 |
+```python
+from retrieval import (
+    # Embedding
+    EmbeddingFactory,
+    OpenAIEmbedding,
+    DashScopeEmbedding,
+    LocalEmbedding,
 
-```bash
-# 使用 DeepSeek（默认）
-uv run src/main.py
+    # VectorStore
+    VectorStoreFactory,
+    ChromaVectorStore,
+    FAISSVectorStore,
+    InMemoryVectorStore,
 
-# 使用豆包
-MODEL_NAME=doubao uv run src/main.py
+    # Document
+    Document,
+    DocumentLoader,
+    DirectoryLoader,
 
-# 使用通义千问
-MODEL_NAME=tongyi uv run src/main.py
+    # Splitter
+    RecursiveTextSplitter,
+    TokenTextSplitter,
+
+    # Retriever
+    VectorRetriever,
+    EnsembleRetriever,
+    MultiQueryRetriever,
+    ContextualCompressionRetriever,  # 新增：压缩检索器
+)
+```
+
+### 3. Output Parsers 模块
+
+结构化输出解析：
+
+```python
+from output_parsers import (
+    # 基础解析器
+    JsonOutputParser,
+    PydanticOutputParser,
+    StrOutputParser,
+    CommaSeparatedListOutputParser,
+    RetryOutputParser,
+
+    # 高级解析器
+    StructuredOutputParser,    # 通用结构化输出
+    XmlOutputParser,           # XML 格式
+    DatetimeOutputParser,       # 日期时间
+)
+```
+
+### 4. Callbacks 模块
+
+可观测性处理器：
+
+```python
+from callbacks import (
+    # 标准处理器
+    TokenCountCallbackHandler,   # Token 统计
+    TimingCallbackHandler,       # 耗时分析
+    TracingCallbackHandler,     # LangSmith 追踪
+    StreamingCallbackHandler,   # 流式输出
+
+    # 社区处理器
+    StdOutCallbackHandler,       # 标准输出
+    AimCallbackHandler,          # AIM 监控
+    FileCallbackHandler,        # 文件日志
+    SensitiveInfoCallbackHandler,  # 敏感信息过滤
+    EventLogCallbackHandler,    # 事件日志
+)
+```
+
+### 5. Prompts 模块
+
+提示词模板：
+
+```python
+from prompts import (
+    # 基础模板
+    PromptTemplate,
+    ChatPromptTemplate,
+    FewShotPromptTemplate,
+
+    # 高级模板
+    PipelinePromptTemplate,      # 多级管道模板
+    ChatMessagePromptTemplate,  # 消息级别模板
+    FewShotChatMessagePromptTemplate,  # 少样本聊天
+    DynamicPipelinePromptTemplate,  # 动态管道
+)
 ```
 
 ---
@@ -590,6 +626,24 @@ DB_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME
 
 ---
 
+## 常用命令
+
+```bash
+# 运行测试
+uv run python -m pytest
+
+# 运行特定测试模块
+uv run python -m pytest tests/test_providers.py -v
+
+# 代码格式化（如果安装了 ruff）
+uv run ruff format .
+
+# 类型检查（如果安装了 pyright）
+uv run pyright
+```
+
+---
+
 ## 许可证
 
 本项目采用 MIT 许可证，详见 [LICENSE](LICENSE) 文件。
@@ -600,6 +654,7 @@ DB_URL=mysql+pymysql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME
 
 - [LangChain 官方文档](https://python.langchain.com/docs/get_started/introduction)
 - [LangChain 中文文档](https://langchain-doc.cn/v1/python/langchain/overview.html)
+- [LangGraph 官方文档](https://langchain-ai.github.io/langgraph/)
 - [FastAPI 官方文档](https://fastapi.tiangolo.com/)
 - [Python 官方文档](https://docs.python.org/3/)
 - [uv 包管理器](https://github.com/astral-sh/uv)
