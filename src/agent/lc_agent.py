@@ -20,6 +20,12 @@ if TYPE_CHECKING:
     from repositories import ChatRepository
 
 
+def _get_default_system_message() -> str:
+    """获取默认系统消息，从 YAML 模板加载"""
+    from prompts import load_prompt
+    return load_prompt("agent_system")
+
+
 @dataclass
 class AgentResponse:
     """Agent 响应"""
@@ -58,7 +64,7 @@ class LCAgent:
             self._llm = llm
 
         self._tools: Sequence[Any] = tools if tools is not None else self._get_default_tools()
-        self._system_message = system_message or "你是一个智能助手，可以帮助用户完成各种任务。当需要外部信息时，使用工具来获取。不要编造信息。"
+        self._system_message = system_message or _get_default_system_message()
         self._state_schema = state_schema
         self._middleware: MiddlewareChain = middleware_chain or DEFAULT_MIDDLEWARE_CHAIN
         self._session_id: Optional[str] = session_id

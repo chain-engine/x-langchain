@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 生成SQL工具模块
 
@@ -9,7 +8,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from tools.base import BaseXTool
@@ -67,6 +65,7 @@ class GenerateSQLTool(BaseXTool):
                 }
 
             from llms import create_chat_model
+            from prompts import load_prompt
 
             # 获取 LLM 实例
             model = create_chat_model("deepseek")
@@ -74,29 +73,8 @@ class GenerateSQLTool(BaseXTool):
             # 构建数据库结构描述
             schema_description = self._build_schema_description(schema_info)
 
-            # 构建提示词
-            system_prompt = f"""你是一个专业的SQL生成专家。根据用户的自然语言问题和数据库结构，生成准确的SQL查询语句。
-
-## 数据库结构
-
-{schema_description}
-
-## 生成规则
-
-1. 只生成SELECT查询语句，不要生成INSERT、UPDATE、DELETE等修改语句
-2. 使用标准的SQL语法
-3. 表名和字段名必须与给定的数据库结构完全一致
-4. 合理使用JOIN连接相关表
-5. 使用适当的WHERE条件过滤数据
-6. 如果涉及聚合，使用GROUP BY和HAVING
-7. 如果用户指定了排序，使用ORDER BY
-8. 如果用户指定了数量限制，使用LIMIT
-9. 对于字符串匹配，使用LIKE时注意转义特殊字符
-10. 不要编造不存在的表或字段
-
-## 输出格式
-
-请直接输出SQL语句，不要包含任何解释或markdown代码块标记。"""
+            # 从模板加载提示词
+            system_prompt = load_prompt("generate_sql", schema_description=schema_description)
 
             user_message = f"请根据以下问题生成SQL查询语句：\n\n{question}"
 

@@ -53,7 +53,6 @@ class AgentConfig:
     max_tokens: int | None = DEFAULT_MAX_TOKENS
     max_iterations: int = DEFAULT_MAX_ITERATIONS
     timeout: int = DEFAULT_TIMEOUT
-    system_prompt: str | None = None
     enable_memory: bool = True
     enable_planning: bool = False
     enable_tools: bool = True
@@ -116,6 +115,17 @@ class MiddlewareConfig:
 
 
 # =============================================================================
+# Prompts 配置
+# =============================================================================
+
+@dataclass
+class PromptsConfig:
+    """提示词模板配置"""
+    templates_dir: str = ""  # 空表示使用默认路径
+    enable_cache: bool = True
+
+
+# =============================================================================
 # LLM Provider 配置
 # =============================================================================
 
@@ -171,7 +181,6 @@ class Settings:
                 "max_tokens": DEFAULT_MAX_TOKENS,
                 "max_iterations": DEFAULT_MAX_ITERATIONS,
                 "timeout": DEFAULT_TIMEOUT,
-                "system_prompt": None,
                 "enable_memory": True,
                 "enable_planning": False,
                 "enable_tools": True,
@@ -203,6 +212,10 @@ class Settings:
             "middleware": {
                 "max_iterations": 20,
                 "warn_threshold": 0.8,
+            },
+            "prompts": {
+                "templates_dir": "",
+                "enable_cache": True,
             },
             "llm_providers": {
                 "model_name": "deepseek",
@@ -275,6 +288,9 @@ class Settings:
             "LOG_RETENTION": ("logging", "retention", str),
             # Middleware
             "MIDDLEWARE_MAX_ITERATIONS": ("middleware", "max_iterations", int),
+            # Prompts
+            "PROMPTS_TEMPLATES_DIR": ("prompts", "templates_dir", str),
+            "PROMPTS_ENABLE_CACHE": ("prompts", "enable_cache", lambda v: v.lower() == "true"),
             # LLM Providers
             "MODEL_NAME": ("llm_providers", "model_name", str),
             "DEEPSEEK_API_KEY": ("llm_providers", "deepseek_api_key", str),
@@ -314,6 +330,7 @@ class Settings:
         self.tools = ToolsConfig(**self._config["tools"])
         self.logging = LoggingConfig(**self._config["logging"])
         self.middleware = MiddlewareConfig(**self._config["middleware"])
+        self.prompts = PromptsConfig(**self._config["prompts"])
         self.llm_providers = LLMProvidersConfig(**self._config["llm_providers"])
 
     def reload(self) -> None:
@@ -474,6 +491,7 @@ __all__ = [
     "ToolsConfig",
     "LoggingConfig",
     "MiddlewareConfig",
+    "PromptsConfig",
     "LLMProvidersConfig",
     # 主类
     "Settings",

@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """将 SQL 查询结果转换为易读的自然语言回答。"""
 
 from __future__ import annotations
@@ -6,7 +5,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 from tools.base import BaseXTool
@@ -58,16 +56,13 @@ class ConvertToNaturalLanguageTool(BaseXTool):
                 }
 
             from llms import create_chat_model
+            from prompts import load_prompt
 
             model = create_chat_model(settings.text_to_sql_model_name)
             preview_rows = results[:20]
             truncated = len(results) > len(preview_rows)
 
-            system_prompt = """你是一个数据分析助手。
-
-请只根据提供的查询结果回答用户问题。
-回答要简洁、准确；如果只展示了部分结果，请明确说明。
-"""
+            system_prompt = load_prompt("convert_to_natural_language")
             payload = {
                 "question": question,
                 "schema_description": schema_description,
