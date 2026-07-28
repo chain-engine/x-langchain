@@ -138,9 +138,8 @@ class PromptTemplate:
         "join": lambda x, sep=", ": sep.join(str(v) for v in x) if x else "",
     }
 
-    # 变量提取正则
-    _VAR_PATTERN: ClassVar[re.Pattern] = re.compile(r"\{\{\s*(\w+)(?:\||}})\s*")
-    _FULL_VAR_PATTERN: ClassVar[re.Pattern] = re.compile(r"\{\{\s*(\w+)(?:\s*\|\s*([\w(\"]+))?\s*\}\}")
+    # 变量提取正则 - 支持 {{ var }} 和 {{ var | filter }}
+    _VAR_PATTERN: ClassVar[re.Pattern] = re.compile(r"\{\{\s*(\w+)(?:\s*\|\s*[\w\(\'\"]+)?\s*\}\}")
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "PromptTemplate":
@@ -431,12 +430,24 @@ def load_prompt(name: str, use_cache: bool = True, **kwargs: Any) -> str:
     Returns:
         渲染后的提示词字符串
 
+    Raises:
+        ValueError: 缺少必需变量时抛出
+
     Example:
         >>> prompt = load_prompt("generate_sql", schema_description="...")
         >>> prompt = load_prompt("question_rewrite")
     """
     loader = _get_global_loader()
     template = loader.load(name, use_cache=use_cache)
+
+    # 验证必需变量
+    missing = template.validate_variables(**kwargs)
+    if missing:
+        raise ValueError(
+            f"模板 '{name}' 缺少必需变量: {missing}。"
+            f"请检查是否传入了所有必需参数。"
+        )
+
     return template.render(**kwargs)
 
 
