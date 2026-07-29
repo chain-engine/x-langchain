@@ -2,7 +2,7 @@
 """
 LangChain Agent 封装
 
-基于 LangGraph 的 create_react_agent API，提供单 Agent 智能体。
+基于 LangChain Agents 的 create_agent API，提供单 Agent 智能体。
 """
 
 from dataclasses import dataclass, field
@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any, Generator, List, Optional, Sequence
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from core.logger import logger
 from core.middleware import DEFAULT_MIDDLEWARE_CHAIN, MiddlewareChain
@@ -37,7 +37,7 @@ class AgentResponse:
 
 
 class LCAgent:
-    """基于 LangGraph create_react_agent 的单 Agent 封装"""
+    """基于 LangChain create_agent 的单 Agent 封装"""
 
     def __init__(
         self,
@@ -71,10 +71,10 @@ class LCAgent:
         self._chat_repository: Optional["ChatRepository"] = chat_repository
         self._auto_persist: bool = auto_persist
 
-        self._agent: Runnable = create_react_agent(
+        self._agent: Runnable = create_agent(
             model=self._llm,
             tools=self._tools,
-            prompt=self._system_message,
+            system_prompt=self._system_message,
             state_schema=self._state_schema,
         )
 
@@ -221,7 +221,7 @@ class LCAgent:
                 tool_results=context.get("_tool_results", []),
                 iterations=context["_iterations"],
                 metadata={
-                    "agent_type": "langgraph.react",
+                    "agent_type": "langchain.agent",
                     "metrics": context.get("_metrics", {}),
                 },
             )
@@ -294,10 +294,10 @@ class LCAgent:
     def add_tools(self, tools: Sequence[Any]) -> None:
         """动态添加工具"""
         self._tools = list(self._tools) + list(tools)
-        self._agent = create_react_agent(
+        self._agent = create_agent(
             model=self._llm,
             tools=self._tools,
-            prompt=self._system_message,
+            system_prompt=self._system_message,
             state_schema=self._state_schema,
         )
         logger.info(f"添加 {len(tools)} 个工具，重新创建 Agent")

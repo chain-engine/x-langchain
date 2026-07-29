@@ -1,5 +1,10 @@
 # x-langchain
 
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-0.3-green.svg)](https://python.langchain.com/)
+[![Stars](https://img.shields.io/github/stars/chain-engine/x-langchain?style=social)](https://github.com/chain-engine/x-langchain/stargazers)
+
 `x-langchain` 是一个生产级的 LangChain 学习与实践项目，旨在帮助开发者系统学习和掌握 LangChain 框架的核心概念与应用方法。
 
 **核心价值**：开箱即用的多模型支持、插件化工具系统、完整的 TextToSQL 解决方案
@@ -93,9 +98,15 @@ x-langchain/
 │   │       └── convert_to_natural_language_tool.py  # 结果转换
 │   │
 │   ├── prompts/                        # Prompt 模块（提示词模板）
+│   │   ├── prompt_loader.py           # YAML 模板加载器（支持变量渲染）
 │   │   ├── templates.py               # 基础模板（PromptTemplate/ChatPromptTemplate）
 │   │   ├── few_shot.py                # Few-shot 模板
-│   │   └── advanced_templates.py       # 高级模板（Pipeline/ChatMessage/FewShotChat）
+│   │   ├── advanced_templates.py       # 高级模板（Pipeline/ChatMessage/FewShotChat）
+│   │   └── templates/                  # YAML 提示词文件
+│   │       ├── agent_system.yaml       # Agent 系统提示词
+│   │       ├── question_rewrite.yaml   # 问题改写
+│   │       ├── generate_sql.yaml       # SQL 生成
+│   │       └── convert_to_natural_language.yaml  # 结果转换
 │   │
 │   ├── chains/                         # Chain 模块（链式调用）
 │   │   ├── llm_chain.py               # LLMChain
@@ -455,6 +466,141 @@ docker run -it --rm `
   -v ${PWD}/.env:/app/.env:ro `
   -v ${PWD}/logs:/app/logs `
   x-langchain:latest
+```
+
+---
+
+## 功能演示
+
+### TextToSQL 工作流
+
+```
+用户问题 → 问题改写 → Schema 解析 → SQL 生成 → 执行 → 结果转换
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│  用户: "各省份的销售额是多少？按销量排序"                                │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  问题改写                                                              │
+│  rewritten_question: "统计各省份的销售总额和销售数量"                     │
+│  query_intent: 分组统计 | aggregation: sum | group_by: [province]       │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  SQL 生成                                                              │
+│  SELECT province, SUM(amount) as total_amount, COUNT(*) as order_count   │
+│  FROM orders GROUP BY province ORDER BY order_count DESC LIMIT 100;    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│  查询结果 → 自然语言                                                    │
+│                                                                         │
+│  各省份销售情况如下：                                                   │
+│  • 广东省: 1,234 万元 (35%)                                            │
+│  • 浙江省: 892 万元 (25%)                                              │
+│  • 江苏省: 756 万元 (22%)                                              │
+│  • 其他省份: 628 万元 (18%)                                             │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Agent 对话示例
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  用户: 帮我查一下北京今天的天气                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Agent: 调用工具 get_weather(city="北京")                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│  工具返回: {"temperature": "28°C", "weather": "晴", "humidity": "45%"}  │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Agent: 北京今天天气晴朗，气温28°C，湿度45%，适合户外活动。               │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 使用示例
+
+### Agent 对话
+
+```python
+from agent.lc_agent import LangChainAgent
+from llms.providers import create_llm
+from tools import ToolRegistry
+
+# 创建 Agent
+llm = create_llm("deepseek")
+tools = ToolRegistry.get_all()
+agent = LangChainAgent(llm=llm, tools=tools)
+
+# 对话
+response = agent.run("帮我查一下北京今天的天气")
+print(response.content)
+```
+
+### TextToSQL 查询
+
+```python
+from tools.text_to_sql import (
+    QuestionRewriteTool,
+    GenerateSqlTool,
+    ExecuteSqlTool,
+    ConvertToNaturalLanguageTool,
+)
+
+# 问题改写
+rewriter = QuestionRewriteTool()
+rewritten = rewriter.run("上个月的订单有多少？")
+
+# 生成 SQL
+sql_gen = GenerateSqlTool()
+sql = sql_gen.run(question=rewritten, schema="CREATE TABLE orders...")
+
+# 执行查询
+executor = ExecuteSqlTool()
+result = executor.run(sql)
+
+# 转换为自然语言
+converter = ConvertToNaturalLanguageTool()
+answer = converter.run(question="上个月的订单有多少？", result=result)
+```
+
+### RAG 检索
+
+```python
+from retrieval import ChromaVectorStore, OpenAIEmbedding, VectorRetriever
+from retrieval.splitter import RecursiveTextSplitter
+from retrieval.document import DocumentLoader
+
+# 加载文档
+loader = DocumentLoader.from_file("docs/guide.pdf")
+splitter = RecursiveTextSplitter(chunk_size=500)
+docs = splitter.split_documents(loader.load())
+
+# 向量存储
+embedding = OpenAIEmbedding()
+vectorstore = ChromaVectorStore.from_documents(docs, embedding)
+
+# 检索
+retriever = VectorRetriever(vectorstore)
+results = retriever.get_relevant_documents("如何配置环境？")
+```
+
+### 自定义工具
+
+```python
+from tools.base import BaseXTool
+from tools.registry import register_tool
+
+@register_tool(name="calculator", category="utility", description="数学计算器")
+class CalculatorTool(BaseXTool):
+    name: str = "calculator"
+    description: str = "执行数学运算"
+
+    def run(self, expression: str) -> str:
+        result = eval(expression)  # 实际使用时请用安全方式
+        return f"结果: {result}"
 ```
 
 ---

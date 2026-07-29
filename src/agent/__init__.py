@@ -2,7 +2,7 @@
 """
 Agent 模块 - 基于 LangChain 的 Agent 组件
 
-提供基于 LangGraph create_react_agent 的单 Agent 实现（ReAct 推理模式）。
+提供基于 LangChain create_agent 的单 Agent 实现（ReAct 推理模式）。
 """
 
 from agent.lc_agent import LCAgent, AgentResponse

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""基于 LangGraph 的异步 Agent 封装。"""
+"""基于 LangChain 的异步 Agent 封装。"""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Any, AsyncGenerator, Optional
 
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import Runnable
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 from agent.lc_agent import AgentResponse, LCAgent
 from core.logger import logger
@@ -37,7 +37,7 @@ _AGENT_OPTION_NAMES = {
 
 
 class AsyncLCAgent(LCAgent):
-    """提供异步调用、流式输出和历史持久化的 LangGraph Agent。"""
+    """提供异步调用、流式输出和历史持久化的 LangChain Agent。"""
 
     def __init__(
         self,
@@ -53,7 +53,7 @@ class AsyncLCAgent(LCAgent):
             tools: Agent 可使用的工具列表，未提供时加载项目默认工具。
             system_message: Agent 的系统提示词。
             **kwargs: 与 LCAgent 相同的会话、中间件和状态配置；也可以通过
-                ``agent_kwargs`` 传递额外的 LangGraph Agent 参数。
+                ``agent_kwargs`` 传递额外的 LangChain Agent 参数。
         """
         config = kwargs.pop("config", None)
         state_schema = kwargs.pop("state_schema", None)
@@ -90,11 +90,11 @@ class AsyncLCAgent(LCAgent):
         create_kwargs = {
             "model": self._llm,
             "tools": self._tools,
-            "prompt": self._system_message,
+            "system_prompt": self._system_message,
             "state_schema": self._state_schema,
             **self._agent_options,
         }
-        self._agent: Runnable = create_react_agent(**create_kwargs)
+        self._agent: Runnable = create_agent(**create_kwargs)
 
         logger.info(
             f"初始化 AsyncLCAgent, tools={len(self._tools)}, "
@@ -185,7 +185,7 @@ class AsyncLCAgent(LCAgent):
 
     @staticmethod
     def _graph_kwargs(kwargs: dict[str, Any]) -> dict[str, Any]:
-        """移除 Agent 封装参数，保留 LangGraph 调用参数。"""
+        """移除 Agent 封装参数，保留 LangChain 调用参数。"""
         graph_kwargs = dict(kwargs)
         graph_kwargs.pop("session_id", None)
         graph_kwargs.pop("config", None)
@@ -241,7 +241,7 @@ class AsyncLCAgent(LCAgent):
                 tool_results=context.get("_tool_results", []),
                 iterations=context["_iterations"],
                 metadata={
-                    "agent_type": "langgraph.react.async",
+                    "agent_type": "langchain.agent.async",
                     "metrics": context.get("_metrics", {}),
                 },
             )
@@ -339,7 +339,7 @@ class AsyncLCAgent(LCAgent):
             yield {"type": "error", "error": str(error)}
 
     async def astream_events(self, user_input: str, **kwargs: Any) -> AsyncGenerator[Any, None]:
-        """异步转发 LangGraph 的完整 astream_events 事件流。"""
+        """异步转发 LangChain 的完整 astream_events 事件流。"""
         session_id = self._session_from_kwargs(kwargs, self._session_id)
         context = {
             "user_input": user_input,
@@ -382,7 +382,7 @@ def create_async_agent(
     system_message: Optional[str] = None,
     **kwargs: Any,
 ) -> AsyncLCAgent:
-    """创建异步 LangGraph Agent。"""
+    """创建异步 LangChain Agent。"""
     return AsyncLCAgent(
         llm=llm,
         tools=tools,
