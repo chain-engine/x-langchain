@@ -1,58 +1,36 @@
 # x-langchain
 
-> LangChain Learning and Practice Project - Building Production-Level LLM Applications with Best Practices
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![LangChain](https://img.shields.io/badge/LangChain-0.3-green.svg)](https://python.langchain.com/)
+[![Stars](https://img.shields.io/github/stars/chain-engine/x-langchain?style=social)](https://github.com/chain-engine/x-langchain/stargazers)
 
-`x-langchain` is a comprehensive LangChain learning and practice project designed to help developers systematically learn and master the core concepts and application methods of the LangChain framework.
-
-**Core Value**: Out-of-the-box multi-model support, plugin-based tool system, complete TextToSQL solution
-
-**Use Cases**: Intelligent customer service, data query assistants, enterprise knowledge base Q&A, LLM application prototyping
-
----
-
-## Table of Contents
-
-- [Core Features](#core-features)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [System Architecture](#system-architecture)
-- [Quick Start](#quick-start)
-- [Core Modules](#core-modules)
-- [Plugin Tool System](#plugin-tool-system)
-- [Configuration](#configuration)
-- [License](#license)
+[中文](README.md) | English
 
 ---
 
-## Core Features
+## Introduction
 
-- **Multi-model Compatibility** - Supports DeepSeek, Doubao, Alibaba Tongyi Qianwen, and other mainstream LLM backends
-- **Agent Capabilities** - LangGraph ReAct Agent with Model, Plan, Act, Tools, Memory五大核心能力
-- **Tool Calling (Function Calling)** - Integrates external APIs and business systems through declarative interface
-- **TextToSQL Functionality** - Natural language to SQL conversion: question rewriting, Schema parsing, SQL generation, validation, and execution
-- **MCP Protocol Support** - Integrates Model Context Protocol with MCP tool calling
-- **Complete RAG Pipeline** - Embedding, VectorStore, DocumentLoader, TextSplitter, Retriever, SemanticMemory
-- **Multiple Memory Implementations** - Buffer, Summary, Window, Entity, CombinedMemory with Redis/File/Postgres/MongoDB persistence
-- **Output Parsers** - JSON, Pydantic, XML, Datetime, Structured output parsers
-- **Callback System** - Token statistics, timing analysis, LangSmith tracing, AIM monitoring, file logging
-- **Security & Compliance** - API key management (loaded from environment variables, no hardcoding)
-- **Observability** - Integrated structured logging system for monitoring and debugging
-- **Plugin Architecture** - Decorator-based tool auto-registration with hot-swapping support
+`x-langchain` is a production-grade LangChain learning and practice project designed to help developers systematically learn and master the core concepts and engineering practices of the LangChain framework.
+
+Built on the LangChain / LangGraph ecosystem, it provides out-of-the-box multi-model compatibility, a pluggable tool system, a complete RAG toolchain, and a TextToSQL solution. The core architecture revolves around an Agent orchestrator, integrating the ReAct reasoning paradigm, multi-turn memory management, declarative tool registration, and MCP protocol support. It covers typical business scenarios from intelligent conversation and data querying to enterprise knowledge base Q&A, making it suitable for both LLM application prototyping and production-grade deployment.
 
 ---
 
-## Tech Stack
+## Key Features
 
-| Category | Technology |
-|----------|------------|
-| **Core Framework** | LangChain, LangGraph, langchain-core |
-| **Model Integration** | langchain-openai, langchain-community, langchain-dashscope |
-| **Configuration** | pydantic-settings, python-dotenv |
-| **Tools** | duckduckgo-search, sqlalchemy, pymysql |
-| **MCP Protocol** | langchain-mcp-adapters |
-| **Logging** | loguru |
-| **Package Manager** | uv |
-| **Deployment** | Docker |
+- **Multi-Model Compatibility** — Unified model factory supporting DeepSeek, Doubao, Alibaba Cloud Tongyi Qianwen, and other mainstream LLM backends; switch with a single environment variable
+- **Agent Capability** — LangGraph-based ReAct Agent with a closed loop of five core capabilities: Model, Planning, Action, Tools, and Memory
+- **Tool Calling (Function Calling)** — Declarative tool registration with decorator-based auto-discovery and hot-plugging; supports external API and business system integration
+- **TextToSQL Toolchain** — Full pipeline from natural language to SQL: Question Rewriting → Schema Parsing → SQL Generation → Validation & Execution → Result Conversion
+- **MCP Protocol Support** — Integrated Model Context Protocol via langchain-mcp-adapters for MCP tool ecosystem access
+- **Complete RAG Toolchain** — Embedding, VectorStore, DocumentLoader, TextSplitter, Retriever, and Semantic Memory for end-to-end retrieval-augmented generation
+- **Multiple Memory Implementations** — Buffer, Summary, Window, Entity, CombinedMemory with multi-backend persistence (Redis / File / PostgreSQL / MongoDB)
+- **Output Parsers** — JSON, Pydantic, XML, Datetime, Structured Output, and more, with retry and fault tolerance support
+- **Callback System** — Token counting, latency analysis, LangSmith tracing, AIM monitoring, file logging for full-chain observability
+- **LCEL Support** — LangChain Expression Language chaining with async execution and dynamic model selection
+- **Security & Compliance** — API keys loaded from environment variables; configuration files separated from code to avoid hardcoded secrets
+- **Pluggable Architecture** — Modular layered design with loosely coupled core components for easy extension and secondary development
 
 ---
 
@@ -60,229 +38,220 @@
 
 ```
 x-langchain/
-├── src/                                # Source code
-│   ├── __init__.py                     # Package init, export all modules
-│   ├── main.py                         # CLI entry point
+├── src/                                    # Source code directory
+│   ├── __init__.py                         # Package initialization, exports all modules
+│   ├── main.py                             # Project entry point, CLI interface
 │   │
-│   ├── core/                           # Core infrastructure
-│   │   ├── config.py                   # Configuration (pydantic-settings)
-│   │   ├── logger.py                   # Logging (loguru)
-│   │   ├── di.py                        # Dependency injection
-│   │   ├── middleware.py               # Middleware (validation/timing/limits)
-│   │   └── exceptions.py               # Custom exceptions
+│   ├── core/                               # Core infrastructure layer
+│   │   ├── config.py                       # Unified configuration management (pydantic-settings + YAML)
+│   │   ├── logger.py                       # Logging system (loguru)
+│   │   ├── di.py                           # Dependency injection container
+│   │   ├── middleware.py                   # Middleware (input validation / timing / iteration limiting)
+│   │   └── exceptions.py                   # Custom exception hierarchy
 │   │
-│   ├── llms/                           # LLM providers
-│   │   └── providers.py                 # Multi-model factory (DeepSeek/Doubao/Tongyi/Mock)
+│   ├── llms/                               # LLM model layer
+│   │   └── providers.py                    # Multi-model factory (DeepSeek / Doubao / Tongyi Qianwen / Mock)
 │   │
-│   ├── memories/                        # Memory management
-│   │   ├── memory.py                  # Basic memory (ChatMessageHistory/BufferMemory)
-│   │   ├── advanced_memory.py          # Advanced (Summary/Window/Entity/Combined)
-│   │   └── chat_history.py             # Storage backends (Redis/File/Postgres/MongoDB)
+│   ├── memories/                           # Memory management layer
+│   │   ├── memory.py                       # Basic memory (ChatMessageHistory / BufferMemory)
+│   │   ├── advanced_memory.py              # Advanced memory (Summary / Window / Entity / Combined)
+│   │   └── chat_history.py                # Multi-backend storage (Redis / File / PostgreSQL / MongoDB)
 │   │
-│   ├── agent/                         # Agent module
-│   │   ├── lc_agent.py                # LangGraph ReAct Agent
-│   │   └── chat_history_service.py     # MySQL persistence
+│   ├── agent/                              # Agent orchestration layer
+│   │   └── lc_agent.py                     # LangGraph ReAct Agent implementation
 │   │
-│   ├── tools/                         # Tool system
-│   │   ├── base.py                    # Tool base class (BaseXTool)
-│   │   ├── registry.py                 # Tool registry
-│   │   ├── weather_tool.py             # Weather (AMAP)
-│   │   ├── calendar_tool.py            # Calendar
-│   │   ├── web_tool.py                # Search (duckduckgo)
-│   │   ├── exchange_rate_tool.py       # Exchange rate
-│   │   ├── qiuchi_mcp/                # Qiuchi MCP tools
-│   │   └── text_to_sql/              # TextToSQL chain
+│   ├── tools/                              # Tool layer (pluggable architecture)
+│   │   ├── base.py                         # Tool base class (BaseXTool)
+│   │   ├── registry.py                     # Tool registry (decorator-based auto-registration)
+│   │   ├── weather_tool.py                 # Weather query (Amap)
+│   │   ├── calendar_tool.py               # Calendar query
+│   │   ├── web_tool.py                     # Web search (DuckDuckGo)
+│   │   ├── exchange_rate_tool.py           # Exchange rate query
+│   │   ├── qiuchi_mcp/                    # Qiuchi MCP tool package
+│   │   └── text_to_sql/                   # TextToSQL toolchain
+│   │       ├── question_rewrite_tool.py    # Question rewriting
+│   │       ├── get_schema_tool.py          # Schema parsing
+│   │       ├── generate_sql_tool.py        # SQL generation
+│   │       ├── validate_sql_tool.py        # SQL validation
+│   │       ├── execute_sql_tool.py         # SQL execution
+│   │       └── convert_to_natural_language_tool.py  # Result conversion
 │   │
-│   ├── prompts/                        # Prompt templates
-│   │   ├── templates.py               # Basic (PromptTemplate/ChatPromptTemplate)
-│   │   ├── few_shot.py               # Few-shot templates
-│   │   └── advanced_templates.py       # Advanced (Pipeline/ChatMessage/FewShotChat)
+│   ├── prompts/                            # Prompt engineering layer
+│   │   ├── prompt_loader.py               # YAML template loader (with variable rendering)
+│   │   ├── templates.py                    # Basic templates (PromptTemplate / ChatPromptTemplate)
+│   │   ├── few_shot.py                     # Few-shot templates
+│   │   ├── advanced_templates.py           # Advanced templates (Pipeline / ChatMessage / FewShotChat)
+│   │   └── templates/                      # YAML prompt file directory
+│   │       ├── agent_system.yaml           # Agent system prompt
+│   │       ├── question_rewrite.yaml       # Question rewriting prompt
+│   │       ├── generate_sql.yaml           # SQL generation prompt
+│   │       └── convert_to_natural_language.yaml  # Result conversion prompt
 │   │
-│   ├── chains/                         # Chain module
-│   │   ├── llm_chain.py              # LLMChain
-│   │   ├── conversation_chain.py       # Conversation chain
-│   │   └── rag_chain.py              # RAG chain
+│   ├── chains/                             # Chain layer
+│   │   ├── llm_chain.py                    # LLM chain
+│   │   ├── conversation_chain.py           # Conversation chain
+│   │   └── rag_chain.py                    # RAG chain
 │   │
-│   ├── retrieval/                      # RAG infrastructure
-│   │   ├── embedding.py                # Embedding (OpenAI/DashScope/Local/Mock)
-│   │   ├── vectorstore.py             # VectorStore (Chroma/FAISS/InMemory)
-│   │   ├── document.py                # Document/Loader
-│   │   ├── splitter.py                # TextSplitter (Recursive/Token)
-│   │   ├── retriever.py               # Retriever (Vector/Ensemble/MultiQuery)
-│   │   ├── compression.py             # Compression retriever
-│   │   └── semantic_memory.py          # Semantic memory
+│   ├── retrieval/                          # RAG retrieval layer
+│   │   ├── embedding.py                    # Embedding factory (OpenAI / DashScope / Local / Mock)
+│   │   ├── vectorstore.py                 # VectorStore factory (Chroma / FAISS / InMemory)
+│   │   ├── document.py                     # Document / DocumentLoader / DirectoryLoader
+│   │   ├── splitter.py                     # TextSplitter (Recursive / Token)
+│   │   ├── retriever.py                    # Retriever (Vector / Ensemble / MultiQuery)
+│   │   ├── compression.py                 # Compression retriever (LLMCompactor / ChainFilter)
+│   │   └── semantic_memory.py             # Semantic memory
 │   │
-│   ├── output_parsers/                 # Output parsers
-│   │   ├── json_parser.py             # JSON parser
-│   │   ├── pydantic_parser.py         # Pydantic parser
-│   │   ├── list_parser.py             # List parser
-│   │   ├── retry_parser.py            # Retry parser
-│   │   └── structured_parser.py         # Structured/XML/Datetime parsers
+│   ├── output_parsers/                     # Output parser layer
+│   │   ├── json_parser.py                  # JSON parser
+│   │   ├── pydantic_parser.py             # Pydantic model parser
+│   │   ├── list_parser.py                  # List parser
+│   │   ├── retry_parser.py                # Retry parser
+│   │   └── structured_parser.py           # Structured / XML / Datetime parser
 │   │
-│   ├── callbacks/                      # Callbacks (observability)
-│   │   ├── handlers.py                # Standard (Token/Timing/Tracing/Streaming)
-│   │   └── community_handlers.py       # Community (StdOut/AIM/File/SensitiveInfo)
+│   ├── callbacks/                          # Observability layer
+│   │   ├── handlers.py                     # Standard handlers (Token / Timing / Tracing / Streaming)
+│   │   └── community_handlers.py           # Community handlers (StdOut / AIM / File / SensitiveInfo)
 │   │
-│   ├── runnables/                     # LCEL utilities
-│   │   ├── async_agent.py             # Async agent
-│   │   ├── configurable.py            # Dynamic LLM selection
-│   │   └── routines.py                # Chain helpers
+│   ├── runnables/                          # Runnable module (LCEL utilities)
+│   │   ├── async_agent.py                  # Async agent
+│   │   ├── configurable.py                # Dynamic LLM selection
+│   │   └── routines.py                     # Chain invocation helpers
 │   │
-│   ├── lcel/                          # LCEL module
-│   │   ├── chain.py                  # LCEL chains
-│   │   └── lcel_utils.py             # LCEL utilities
+│   ├── lcel/                               # LCEL module (LangChain Expression Language)
+│   │   ├── chain.py                        # LCEL chain invocation
+│   │   └── lcel_utils.py                  # LCEL utility functions
 │   │
-│   ├── constants/                      # Constants
-│   │   ├── base.py                   # Base constants
-│   │   ├── develop.py                 # Development constants
-│   │   ├── streaming_modes.py         # Streaming modes
-│   │   └── agent.py                   # Agent modes
+│   ├── constants/                          # Constants module
+│   │   ├── base.py                         # Base constants
+│   │   ├── develop.py                      # Development-related constants
+│   │   ├── streaming_modes.py              # Streaming modes
+│   │   └── agent.py                        # Agent mode enumeration
 │   │
-│   └── infras/                        # Infrastructure
-│       └── mysql/                    # MySQL
-│           ├── models.py              # ORM models
-│           ├── mysql.py               # Connection
-│           └── operations.py          # Operations
+│   └── infras/                             # Infrastructure layer
+│       └── mysql/                          # MySQL database
+│           ├── models.py                   # ORM model definitions
+│           ├── mysql.py                     # Database connection management
+│           └── operations.py               # Database operation wrappers
 │
-├── tests/                              # Tests
-├── docs/                               # Documentation
-├── examples/                           # Examples
-├── logs/                               # Logs
-├── .env.example                        # Config template
-├── pyproject.toml                      # Dependencies
-├── Dockerfile                          # Docker
-└── README.md                           # Docs
+├── tests/                                  # Unit tests
+├── docs/                                   # Project documentation
+├── examples/                               # Example code (25+ examples)
+├── logs/                                   # Runtime log output directory
+├── data/                                   # Data files directory
+├── config.yaml                             # YAML configuration file
+├── .env.example                            # Environment variable template
+├── pyproject.toml                          # Project metadata and dependency management
+├── uv.toml                                 # uv package manager configuration
+├── pyrightconfig.json                      # Pyright type checking configuration
+├── langgraph.json                          # LangGraph deployment configuration
+├── Dockerfile                              # Docker container build file
+├── setup.py                                # Compatibility installation script
+└── LICENSE                                 # MIT open source license
 ```
 
 ---
 
 ## System Architecture
 
-### Core Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Agent (Coordinator)                        │
-│  ┌──────────┬──────────┬──────────┬──────────┬──────────┐    │
-│  │   LLM   │  Memory  │   Plan   │   Act    │  Tools   │    │
-│  │  (Brain)│ (Memory) │ (Reason) │  (Exec)  │ (Tools)  │    │
-│  └──────────┴──────────┴──────────┴──────────┴──────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-              ┌───────────────────────────────┐
-              │     LangChain / LangGraph        │
-              │   ReAct paradigm for reasoning   │
-              └───────────────────────────────┘
-```
-
-### Component Responsibilities
-
-| Component | Directory | Responsibility |
-|-----------|-----------|----------------|
-| LLM | `llms/` | Multi-model factory (DeepSeek/Doubao/Tongyi/Mock) |
-| Memory | `memories/` | Basic + Advanced + Multiple persistence backends |
-| Plan/Act | `agent/` | ReAct loop based on LangGraph |
-| Tools | `tools/` | Plugin system (weather/search/database/MCP/TextToSQL) |
-| Retrieval | `retrieval/` | RAG pipeline (Embedding/VectorStore/Retriever) |
-| Output Parser | `output_parsers/` | Structured output (JSON/Pydantic/XML/Datetime) |
-| Callback | `callbacks/` | Token stats/timing/logging/tracing |
-
-### Layered Architecture
+### Layered Architecture Diagram
 
 ```mermaid
 graph TB
-    subgraph User Layer
-        CLI[CLI Interface<br/>main.py]
+    subgraph UserLayer["User Layer"]
+        CLI["CLI Interface<br/>main.py"]
     end
 
-    subgraph Application Layer
-        AG[Agent Instance<br/>lc_agent.py]
+    subgraph AppLayer["Application Layer"]
+        AG["Agent Orchestrator<br/>lc_agent.py"]
     end
 
-    subgraph Core Layer
-        CFG[Configuration<br/>config.py]
-        LOG[Logging<br/>logger.py]
-        CTN[Container<br/>di.py]
-        MID[Middleware<br/>middleware.py]
+    subgraph CoreLayer["Core Components Layer"]
+        CFG["Configuration<br/>config.py"]
+        LOG["Logging<br/>logger.py"]
+        DI["Dependency Injection<br/>di.py"]
+        MID["Middleware<br/>middleware.py"]
     end
 
-    subgraph Memory Layer
-        MM[Memories<br/>memory/advanced/chat_history]
+    subgraph PromptLayer["Prompt Engineering Layer"]
+        PRT["PromptTemplate"]
+        FSP["FewShot"]
+        PLP["Pipeline"]
+        DYP["Dynamic"]
     end
 
-    subgraph Model Layer
-        MF[Model Provider<br/>providers.py]
-        DS[DeepSeek]
-        DJ[Doubao]
-        TY[Tongyi]
-        MK[Mock]
+    subgraph ModelLayer["Model Layer"]
+        MF["Model Factory<br/>providers.py"]
+        DS["DeepSeek"]
+        DJ["Doubao"]
+        TY["Tongyi Qianwen"]
+        MK["Mock"]
     end
 
-    subgraph RAG Pipeline
-        ED[Embedding]
-        VS[VectorStore]
-        DL[DocumentLoader]
-        SP[TextSplitter]
-        RT[Retriever]
-        CM[Compression]
+    subgraph MemoryLayer["Memory Management Layer"]
+        MM["Conversation Memory<br/>memories/"]
     end
 
-    subgraph Tools Layer
-        WT[Weather]
-        CT[Calendar]
-        WS[Search]
-        ER[Exchange Rate]
-        MCP[MCP Tools]
-        SQL[TextToSQL]
+    subgraph RetrievalLayer["RAG Retrieval Layer"]
+        ED["Embedding"]
+        VS["VectorStore"]
+        DL["DocumentLoader"]
+        SP["TextSplitter"]
+        RT["Retriever"]
+        CM["Compression"]
     end
 
-    subgraph Output
-        OP[Output Parsers]
-        CB[Callbacks]
+    subgraph ToolLayer["Tool Layer"]
+        WT["Weather"]
+        CT["Calendar"]
+        WS["Web Search"]
+        ER["Exchange Rate"]
+        MCP["MCP Tools"]
+        SQL["TextToSQL"]
     end
 
-    subgraph Storage
-        DB[(MySQL)]
-        RD[(Redis)]
-        FS[(File)]
+    subgraph OutputLayer["Output Processing Layer"]
+        OP["Output Parser"]
+        CB["Callbacks"]
+    end
+
+    subgraph StorageLayer["Storage Layer"]
+        DB[("MySQL")]
+        RD[("Redis")]
+        FS[("File System")]
     end
 
     CLI --> AG
-    AG --> MM & MF & ED & RT & WT & CT & WS & ER & SQL & MCP
-    AG --> CFG & LOG & CTN & MID
-    MM --> FS & RD & DB
+    AG --> CFG & LOG & DI & MID
+    AG --> PRT & FSP & PLP & DYP
+    AG --> MF & MM & ED & RT & WT & CT & WS & ER & SQL & MCP
+    AG --> OP & CB
     MF --> DS & DJ & TY & MK
-    ED --> VS
-    VS --> RT
-    DL --> SP --> RT
-    RT --> CM
+    ED --> VS --> RT
+    DL --> SP --> RT --> CM
+    MM --> FS & RD & DB
 ```
 
-### ReAct Execution Loop
+### ReAct Execution Flow
 
 ```mermaid
 flowchart TD
-    Start([Start]) --> Input[User Input]
-    Input --> LoadMem[Load Memory]
-    LoadMem --> AppendCtx[Append Context]
+    Start(["Start"]) --> Input["User Input"]
+    Input --> LoadMem["Load Conversation Memory"]
+    LoadMem --> AppendCtx["Assemble Context & Prompts"]
 
-    AppendCtx --> Think{LLM Reasoning}
-    Think -->|Need Tool| Act[Execute Tool]
-    Think -->|Direct Answer| FinalAnswer[Output Answer]
+    AppendCtx --> Think{"LLM Reasoning"}
+    Think -->|"Tool Required"| Act["Execute Tool Call"]
+    Think -->|"Direct Answer"| FinalAnswer["Generate Final Answer"]
 
-    Act --> ToolExecute[Tool Execution]
-    ToolExecute --> DB[(Database)]
+    Act --> ToolExec["Tool Execution"]
+    ToolExec --> Observe["Obtain Execution Result"]
+    Observe --> Continue{"Continue Reasoning?"}
 
-    DB --> Observe[Get Result]
-    Observe --> Continue{Continue Loop?}
+    Continue -->|"Yes"| Think
+    Continue -->|"No"| FinalAnswer
 
-    Continue -->|Yes| Think
-    Continue -->|No| FinalAnswer
-
-    FinalAnswer --> SaveMem[Save Memory]
-    SaveMem --> Output[Return to User]
-    Output --> Input
+    FinalAnswer --> SaveMem["Save Conversation Memory"]
+    SaveMem --> Output["Return to User"]
 
     style Think fill:#4A90D9,color:#fff
     style Act fill:#E67E22,color:#fff
@@ -290,292 +259,221 @@ flowchart TD
     style FinalAnswer fill:#9B59B6,color:#fff
 ```
 
-### Module Dependencies
+### Module Dependency Diagram
 
 ```mermaid
 graph LR
-    subgraph Entry
-        M[main.py]
+    subgraph Entry["Entry"]
+        M["main.py"]
     end
 
-    subgraph Core Infrastructure
-        CC[core<br/>config/logger/container/middleware]
+    subgraph Infrastructure["Core Infrastructure"]
+        CC["core/<br/>config / logger / di / middleware"]
     end
 
-    subgraph Core Modules
-        AG[agent<br/>lc_agent.py]
-        LL[llms<br/>providers.py]
-        MM[memories<br/>memory/advanced/chat_history]
-        TL[tools<br/>registry/weather/web...]
-        PR[prompts<br/>templates/few_shot/advanced]
-        RT[retrieval<br/>embedding/vectorstore/retriever...]
-        OP[output_parsers<br/>json/pydantic/xml...]
-        CB[callbacks<br/>handlers/community_handlers]
+    subgraph CoreModules["Core Modules"]
+        AG["agent/"]
+        LL["llms/"]
+        MM["memories/"]
+        TL["tools/"]
+        PR["prompts/"]
+        RT["retrieval/"]
+        OP["output_parsers/"]
+        CB["callbacks/"]
+        LP["lcel/"]
+        RN["runnables/"]
     end
 
-    subgraph Storage
-        DB[(MySQL)]
+    subgraph Storage["Storage Layer"]
+        DB[("MySQL")]
     end
 
     M --> AG & CC
-    AG --> LL & MM & TL & PR & RT & OP & CC
+    AG --> LL & MM & TL & PR & RT & OP & CB & LP & RN
     LL --> CC
     MM --> CC & DB
     TL --> CC
     RT --> CC & DB
     OP --> CC
     CB --> CC
+    LP --> CC
+    RN --> CC
 ```
 
 ---
 
 ## Quick Start
 
-### Requirements
+### 1. Prerequisites
 
-| Environment | Requirements |
-|-------------|--------------|
-| **Windows** | Python 3.11+, PowerShell or Git Bash |
-| **Linux/macOS** | Python 3.11+, any Shell |
+| Platform | Requirements |
+|----------|-------------|
+| **Windows** | Python 3.11+, PowerShell or Git Bash recommended |
+| **Linux** | Python 3.11+, any Shell |
+| **macOS** | Python 3.11+, any Shell (Apple Silicon users should ensure matching Python build architecture) |
 
-> Recommended to use [`uv`](https://github.com/astral-sh/uv) as package manager
+> [`uv`](https://github.com/astral-sh/uv) is recommended as the package manager for its speed and dependency resolution capabilities
 
-### Installation
+### 2. Clone the Repository
 
 ```bash
-# Clone
 git clone https://github.com/chain-engine/x-langchain.git
 cd x-langchain
+```
 
-# Install dependencies
+### 3. Install & Sync Dependencies
+
+```bash
+# Using uv (recommended)
 uv sync
 
-# Configure
+# Install optional dependencies (e.g., Gradio UI)
+uv sync --extra ui
+```
+
+### 4. Environment Configuration
+
+Copy the environment variable template and edit it:
+
+```bash
 cp .env.example .env
-# Edit .env with your API keys
 ```
 
-### Run
-
-```bash
-# Default model (DeepSeek)
-uv run src/main.py
-
-# Or use environment variable
-MODEL_NAME=deepseek uv run src/main.py
-MODEL_NAME=doubao uv run src/main.py
-MODEL_NAME=tongyi uv run src/main.py
-```
-
-### Docker
-
-```bash
-# Build
-docker build -t x-langchain:latest .
-
-# Run
-docker run -it --rm \
-  -v $(pwd)/.env:/app/.env:ro \
-  -v $(pwd)/logs:/app/logs \
-  x-langchain:latest
-```
-
----
-
-## Core Modules
-
-### 1. Memories Module
-
-```python
-from memories import (
-    # Basic
-    ConversationMemory,
-    BufferMemory,
-
-    # Advanced
-    ConversationSummaryMemory,
-    ConversationBufferWindowMemory,
-    ConversationEntityMemory,
-    CombinedMemory,
-
-    # Storage backends
-    create_chat_history,
-    RedisChatHistory,
-    FileChatHistory,
-    PostgresChatHistory,
-    MongoDBChatHistory,
-)
-```
-
-### 2. Retrieval Module
-
-```python
-from retrieval import (
-    # Embedding
-    EmbeddingFactory,
-    OpenAIEmbedding,
-    DashScopeEmbedding,
-    LocalEmbedding,
-
-    # VectorStore
-    VectorStoreFactory,
-    ChromaVectorStore,
-    FAISSVectorStore,
-    InMemoryVectorStore,
-
-    # Document & Splitter
-    Document,
-    DocumentLoader,
-    RecursiveTextSplitter,
-
-    # Retriever
-    VectorRetriever,
-    EnsembleRetriever,
-    MultiQueryRetriever,
-    ContextualCompressionRetriever,
-)
-```
-
-### 3. Output Parsers Module
-
-```python
-from output_parsers import (
-    # Basic
-    JsonOutputParser,
-    PydanticOutputParser,
-    StrOutputParser,
-    CommaSeparatedListOutputParser,
-    RetryOutputParser,
-
-    # Advanced
-    StructuredOutputParser,
-    XmlOutputParser,
-    DatetimeOutputParser,
-)
-```
-
-### 4. Callbacks Module
-
-```python
-from callbacks import (
-    # Standard
-    TokenCountCallbackHandler,
-    TimingCallbackHandler,
-    TracingCallbackHandler,
-    StreamingCallbackHandler,
-
-    # Community
-    StdOutCallbackHandler,
-    AimCallbackHandler,
-    FileCallbackHandler,
-    SensitiveInfoCallbackHandler,
-    EventLogCallbackHandler,
-)
-```
-
-### 5. Prompts Module
-
-```python
-from prompts import (
-    # Basic
-    PromptTemplate,
-    ChatPromptTemplate,
-    FewShotPromptTemplate,
-
-    # Advanced
-    PipelinePromptTemplate,
-    ChatMessagePromptTemplate,
-    FewShotChatMessagePromptTemplate,
-    DynamicPipelinePromptTemplate,
-)
-```
-
----
-
-## Plugin Tool System
-
-Create new tools in 3 steps:
-
-```python
-# 1. Create file in tools/
-# tools/my_tool.py
-
-# 2. Use decorator
-from tools.registry import register_tool
-
-@register_tool(name="my_tool", category="custom", description="My tool")
-class MyTool:
-    def __init__(self):
-        self.name = "my_tool"
-        self.description = "My custom tool"
-
-    def run(self, param: str) -> str:
-        return f"Processed: {param}"
-
-# 3. Done! Auto-registered on import
-```
-
----
-
-## Configuration
+Core parameters in `.env`:
 
 ```env
-# DeepSeek
-DEEPSEEK_API_KEY=sk-xxxxxxx
+# ===== LLM Model Configuration (choose one) =====
+
+# DeepSeek (recommended)
+DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 DEEPSEEK_API_BASE=https://api.deepseek.com/v1
-DEEPSEEK_MODEL_NAME=deepseek-chat
+DEEPSEEK_MODEL_NAME=deepseek-v4-pro
 
-# Or Doubao
-DOUBAO_API_KEY=xxxxxxx
+# Doubao
+DOUBAO_API_KEY=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 DOUBAO_API_BASE=https://ark.cn-beijing.volces.com/api/v3
-DOUBAO_MODEL_NAME=ep-xxxxxxx
+DOUBAO_MODEL_NAME=ep-xxxxxxxxxxxxxx
 
-# Database (TextToSQL)
+# Alibaba Cloud Tongyi Qianwen
+ALIYUN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+ALIYUN_MODEL_NAME=qwen-plus
+
+# ===== Database Configuration (required for TextToSQL) =====
 DB_HOST=localhost
 DB_PORT=3306
 DB_USER=root
 DB_PASSWORD=your_password
 DB_NAME=your_database
+
+# ===== Tool Configuration =====
+AMAP_API_KEY=your_amap_api_key      # Amap weather query
+MCP_ENABLED=false                    # MCP protocol toggle
 ```
 
----
+You can also edit `config.yaml` to adjust advanced settings for Agent, logging, middleware, etc.
 
-## Common Commands
+### 5. Start the Service
+
+#### Local Development
 
 ```bash
-# Run tests
-uv run python -m pytest
+# Using the default model (DeepSeek)
+uv run src/main.py
 
-# Format code
-uv run ruff format .
+# Or use the registered CLI entry point
+uv run x-langchain
 
-# Type check
+# Specify model via environment variable
+MODEL_NAME=deepseek uv run src/main.py
+MODEL_NAME=doubao   uv run src/main.py
+MODEL_NAME=tongyi   uv run src/main.py
+```
+
+#### Docker Deployment
+
+```bash
+# Build the image
+docker build -t x-langchain:latest .
+
+# Linux / macOS
+docker run -it --rm \
+  -v $(pwd)/.env:/app/.env:ro \
+  -v $(pwd)/logs:/app/logs \
+  x-langchain:latest
+
+# Windows PowerShell
+docker run -it --rm `
+  -v ${PWD}/.env:/app/.env:ro `
+  -v ${PWD}/logs:/app/logs `
+  x-langchain:latest
+```
+
+### 6. Common Engineering Commands
+
+```bash
+# Run unit tests
+uv run pytest tests/ -v
+
+# Test coverage report
+uv run pytest tests/ --cov=src --cov-report=term-missing
+
+# Code formatting
+uv run ruff format src/ tests/
+
+# Static code analysis
+uv run ruff check src/ tests/
+
+# Auto-fix fixable lint issues
+uv run ruff check --fix src/ tests/
+
+# Type checking
 uv run pyright
 ```
 
 ---
 
+## Tech Stack
+
+| Category | Technology |
+|----------|-----------|
+| **Core Framework** | LangChain, LangGraph, langchain-core |
+| **Model Integration** | langchain-openai, langchain-community, langchain-dashscope, langchain-anthropic |
+| **MCP Protocol** | langchain-mcp-adapters |
+| **Data Storage** | MySQL (SQLAlchemy + PyMySQL / aiomysql) |
+| **Caching** | Redis (optional, for ChatHistory persistence) |
+| **Core Libraries** | pydantic, pydantic-settings, python-dotenv, pyyaml, duckduckgo-search, requests |
+| **Logging** | loguru |
+| **Type Checking** | Pyright |
+| **Code Quality** | Ruff (formatting + linting) |
+| **Testing** | pytest, pytest-cov |
+| **Package Management** | uv |
+| **Deployment** | Docker |
+
+---
+
 ## License
 
-MIT License. See [LICENSE](LICENSE) file.
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
 ## References
 
-- [LangChain Docs](https://python.langchain.com/docs/get_started/introduction)
-- [LangGraph Docs](https://langchain-ai.github.io/langgraph/)
-- [DeepSeek API](https://platform.deepseek.com/docs/api)
-- [Doubao](https://www.doubao.com/)
-- [Alibaba Tongyi](https://help.aliyun.com/product/1081203.html)
+- [Python Official Documentation](https://docs.python.org/3.11/)
+- [LangChain Official Documentation](https://python.langchain.com/)
+- [LangGraph Official Documentation](https://langchain-ai.github.io/langgraph/)
+- [uv Official Documentation](https://docs.astral.sh/uv/)
+- [Pydantic Official Documentation](https://docs.pydantic.dev/)
+- [SQLAlchemy Official Documentation](https://docs.sqlalchemy.org/)
+- [loguru Official Documentation](https://loguru.readthedocs.io/)
+- [Ruff Official Documentation](https://docs.astral.sh/ruff/)
+- [Docker Official Documentation](https://docs.docker.com/)
 
 ---
 
 ## Contact
 
-| Item | Info |
-|------|------|
-| **Author** | John Young |
-| **Email** | john.young@foxmail.com |
-| **GitHub** | https://github.com/yeyushilai |
-| **Project** | https://github.com/chain-engine/x-langchain |
+- **Author**: John Young
+- **Email**: john.young@foxmail.com
+- **Gitee**: https://gitee.com/yeyushilai
+- **GitHub**: https://github.com/yeyushilai
