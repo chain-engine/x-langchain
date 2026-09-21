@@ -3384,7 +3384,7 @@ wheels = [
 
 [[package]]
 name = "x-langchain"
-version = "0.2.0"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiomysql" },
@@ -3399,7 +3399,6 @@ dependencies = [
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
     { name = "langgraph" },
-    { name = "langgraph-prebuilt" },
     { name = "loguru" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -3439,7 +3438,6 @@ requires-dist = [
     { name = "langchain-mcp-adapters", specifier = ">=0.3.0" },
     { name = "langchain-openai", specifier = ">=1.4.0" },
     { name = "langgraph", specifier = ">=0.2.0" },
-    { name = "langgraph-prebuilt", specifier = ">=0.1.0" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "pillow", marker = "extra == 'ui'", specifier = ">=10.0.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
