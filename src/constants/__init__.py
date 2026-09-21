@@ -5,10 +5,10 @@
 本模块定义了项目中使用的各种常量。
 """
 
-from enum import Enum
-
-from .streaming_modes import StreamMode, DEFAULT_STREAM_MODES
-from .develop import (
+from .enums import (
+    AgentMode,
+    StreamMode,
+    DEFAULT_STREAM_MODES,
     HttpContentType,
     HashAlgorithm,
     SymmetricCipher,
@@ -18,7 +18,7 @@ from .develop import (
     AsymmetricPadding,
     EncodingType,
 )
-from .agent import AgentMode
+from .constants import QIUCHI_MCP_BASE_URL, QIUCHI_MCP_PATH, QIUCHI_MCP_MODE
 
 
 __all__ = [

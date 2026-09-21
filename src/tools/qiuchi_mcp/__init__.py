@@ -21,8 +21,8 @@ MCP 服务器提供的工具并将其转换为 LangChain 工具。
 
 环境变量：
     QIUCHI_MCP_BASE_URL: 秋池 MCP 服务器地址（默认: http://localhost:8000）
-    QIUCHI_MCP_PATH: MCP 路径（默认: /mcp）
-    QIUCHI_MCP_MODE: 连接模式 http/stdio（默认: http）
+    QIUCHI_MCP_PATH: 固定为 /mcp（不从环境变量读取，避免 MSYS 路径转换问题）
+    QIUCHI_MCP_MODE: 固定为 http（如需 stdio，实例化 QiuChiMCPClient 时传 mode="stdio"）
 
 注意：需要安装 langchain-mcp-adapters
     pip install langchain-mcp-adapters
@@ -34,11 +34,7 @@ import os
 from typing import Any, Dict, List, Optional
 
 from core.logger import logger
-
-# MCP 服务器配置（可通过环境变量覆盖）
-QIUCHI_MCP_BASE_URL = os.environ.get("QIUCHI_MCP_BASE_URL", "http://localhost:8000")
-QIUCHI_MCP_PATH = os.environ.get("QIUCHI_MCP_PATH", "/mcp")
-QIUCHI_MCP_MODE = os.environ.get("QIUCHI_MCP_MODE", "http")  # http 或 stdio
+from constants import QIUCHI_MCP_BASE_URL, QIUCHI_MCP_PATH, QIUCHI_MCP_MODE
 
 # 尝试导入 langchain-mcp-adapters
 try:
@@ -50,9 +46,9 @@ except ImportError as e:
 
 
 def _get_http_config() -> Dict[str, Any]:
-    """获取 HTTP 模式的 MCP 客户端配置"""
+    """获取 streamable-http 模式的 MCP 客户端配置"""
     return {
-        "transport": "http",
+        "transport": "streamable_http",
         "url": f"{QIUCHI_MCP_BASE_URL}{QIUCHI_MCP_PATH}",
     }
 
@@ -127,7 +123,7 @@ class QiuChiMCPClient:
             config = _get_stdio_config()
         else:
             config = {
-                "transport": "http",
+                "transport": "streamable_http",
                 "url": f"{self._base_url}{self._path}",
             }
         return {self._server_name: config}

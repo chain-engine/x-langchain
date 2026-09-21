@@ -73,6 +73,8 @@ def register_mcp_tools() -> int:
                 ToolRegistry.register(tool, name=tool_name, category="mcp", subcategory="qiuchi_mcp")
                 count += 1
     except Exception as e:
+        import traceback
+        logger.warning(f"获取秋池 MCP 工具失败: {e}\n{traceback.format_exc()}")
         warnings.warn(f"获取秋池 MCP 工具失败: {e}")
 
     return count
@@ -101,6 +103,8 @@ async def register_mcp_tools_async() -> int:
                 ToolRegistry.register(tool, name=tool_name, category="mcp", subcategory="qiuchi_mcp")
                 count += 1
     except Exception as e:
+        import traceback
+        logger.warning(f"获取秋池 MCP 工具失败(async): {e}\n{traceback.format_exc()}")
         warnings.warn(f"获取秋池 MCP 工具失败: {e}")
 
     return count

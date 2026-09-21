@@ -25,7 +25,7 @@ from typing import Any, Final
 import yaml
 from dotenv import load_dotenv
 
-from constants.agent import AgentMode
+from constants import AgentMode
 
 
 # =============================================================================
